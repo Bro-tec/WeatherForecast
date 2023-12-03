@@ -13,7 +13,7 @@ def CreateTable(sqlPath,sql):
 def write(sqlPath, dbName, df):
     mydb = sqlite3.connect(sqlPath)
     mycursor = mydb.cursor()
-    df.to_sql(name=dbName, con=mydb, if_exists='append',index = False, chunksize = 1000)
+    df.to_sql(name=dbName, con=mydb, if_exists='replace',index = False, chunksize = 1000)
     mycursor.close()
     mydb.close()
 
