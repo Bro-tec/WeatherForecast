@@ -23,7 +23,7 @@ let url = [ "https://opendata.dwd.de/climate_environment/CDC/observations_german
             '--disable-dev-shm-usage',
             '--disable-infobars',
             '--window-position=0,0',
-            `--window-size=${1620},${1080}`,
+            //`--window-size=${1620},${1080}`,
             '--ignore-certifcate-errors',
             '--ignore-certifcate-errors-spki-list',
             '--user-agent="Chrome/97.0.4692.45 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36"',
@@ -46,15 +46,18 @@ let url = [ "https://opendata.dwd.de/climate_environment/CDC/observations_german
     //await console.log(browser.browserContexts());
     const page = await browser.newPage();
 
-    for (let i = 0; i < url.length; i++) {
-        await page.goto(url[0], { waitUntil: 'load' });
+    for (let u = 0; u < url.length; u++) {
+        await page.goto(url[u], { waitUntil: 'load' });
 
         try {
             let i = 2;
-            while (true) {
+            // while (true) {
+            for (let x = 0; x < 6; x++) {
                 await page.evaluate((i) => {
                     let link = document.getElementsByTagName('a');
+                    if (link[i].innerText.endsWith(".zip")){
                         return link[i].click();
+                    }
                 },i);
                 // await page.click('a')[i];
                 await page.waitForTimeout(200);
@@ -63,9 +66,10 @@ let url = [ "https://opendata.dwd.de/climate_environment/CDC/observations_german
         } catch (error) {
             await console.log("Did work and work is done");
         }
+        await page.waitForTimeout(10000);
     }
 
-    await page.waitForTimeout(30000);
+    await page.waitForTimeout(5000);
 
     await page.close();
     await page.waitForTimeout(200);
