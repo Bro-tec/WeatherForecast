@@ -1,5 +1,6 @@
 import sqlite3
 import pandas as pd
+import numpy as np
 
 def CreateTable(sqlPath,sql):
     mydb = sqlite3.connect(sqlPath)
@@ -31,3 +32,21 @@ def Read(sqlPath,dbName):
     # else:
     #     print("klappt nicht")
     #     return None
+
+def ReadyByCity(sqlPath,dbName,city):
+    mydb = sqlite3.connect(sqlPath)
+    mycursor = mydb.cursor()
+    sql_query = f'SELECT * FROM {dbName} WHERE Cityname="{city}"'
+    result = pd.read_sql(sql_query, con=mydb)
+    mycursor.close()
+    mydb.close()
+    return result
+
+def getPosition(sqlPath, cityName):
+    mydb = sqlite3.connect(sqlPath)
+    mycursor = mydb.cursor()
+    sql_query = f'SELECT * FROM cities where cityname="{cityName}"'
+    result = pd.read_sql(sql_query, con=mydb)
+    mycursor.close()
+    mydb.close()
+    return result

@@ -1,4 +1,4 @@
-import database_con as db
+import db_con as db
 import os
 import zipfile as zpf
 import pandas as pd
@@ -19,4 +19,5 @@ print(db.Read(sqlcloudiness, "cloudiness"))
 print(db.Read(sqlextreme_wind, "extreme_wind"))
 print(db.Read(sqlmoisture, "moisture"))
 print(db.Read(sqlpressure, "pressure"))
-print(db.Read(sqlwind, "wind"))
+wind = db.Read(sqlwind, "wind")
+print(wind)
