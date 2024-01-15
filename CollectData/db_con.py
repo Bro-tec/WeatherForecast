@@ -42,6 +42,15 @@ def ReadyByCity(sqlPath,dbName,city):
     mydb.close()
     return result
 
+def ReadyByCitiyDate(sqlPath,dbName,city,date):
+    mydb = sqlite3.connect(sqlPath)
+    mycursor = mydb.cursor()
+    sql_query = f'SELECT * FROM {dbName} WHERE Cityname="{city}" and dat="{date}"'
+    result = pd.read_sql(sql_query, con=mydb)
+    mycursor.close()
+    mydb.close()
+    return result
+
 def getPosition(sqlPath, cityName):
     mydb = sqlite3.connect(sqlPath)
     mycursor = mydb.cursor()
