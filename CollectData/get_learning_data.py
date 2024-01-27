@@ -5,7 +5,7 @@ import datetime
 import pandas as pd
 import numpy as np
 
-
+icons = ["clear-day", "clear-night", "partly-cloudy-day", "partly-cloudy-night", "cloudy", "fog", "wind", "rain", "sleet", "snow", "hail", "thunderstorm", "dry", "moist", "wet", "rime", "ice", "glaze", "not dry", "reserved", None]
 
 
 def load_stations_csv():
@@ -31,6 +31,15 @@ def getCities(cityP,cityName):
         return "Error"
     return chooseByNearest(chosen, unchosen)
 
+def filter_data(data):
+    data = data.drop(["source_id"], axis=1)
+    data["icon"] = [icons.index(_) for _ in data["icon"]]
+    data["condition"] = [icons.index(_) for _ in data["condition"]]
+    if "fallback_source_ids" in data:
+        data = data.drop(["fallback_source_ids"], axis=1)
+    data = data.fillna(0)
+    return data
+
 
 def joinData(cityID, cities, lc, date):
     # print(cityID, cities, date)
@@ -40,9 +49,7 @@ def joinData(cityID, cities, lc, date):
         return pd.DataFrame(columns=["error"])
     # print(json.dumps(data, indent = 4, sort_keys = True))
     data =pd.DataFrame(data)
-    data = data.drop(["source_id"], axis=1)
-    if "fallback_source_ids" in data:
-        data = data.drop(["fallback_source_ids"], axis=1)
+    data = filter_data(data)
     i = 0
     while i < lc:
         newdata = dwd.getWeatherByStationIDDate(cities.iloc[i,0], date)
@@ -51,15 +58,13 @@ def joinData(cityID, cities, lc, date):
             lc +=1
             continue
         newdata = pd.DataFrame(newdata)
-        newdata = newdata.drop(["source_id"], axis=1)
-        if "fallback_source_ids" in newdata:
-            newdata = newdata.drop(["fallback_source_ids"], axis=1)
+        newdata = filter_data(newdata)
         data = pd.merge(data, newdata, on="timestamp", how="outer", suffixes=("", "_" + str(i+4-lc)))
 
         #data = data.join(newdata, lsuffix='', rsuffix='{i}', how='outer').reset_index()
     # print("joinData",data.columns)
     # data = data.drop(["source_id", "source_id_0", "source_id_1", "source_id_2", "source_id_3", "fallback_source_ids_3", "fallback_source_ids_2", "fallback_source_ids_1", "fallback_source_ids_0"], axis=1)
-    data = data.fillna(0)
+    data = data.drop(["timestamp"], axis=1)
     return data
 
 def label(cityID, date):
@@ -67,9 +72,7 @@ def label(cityID, date):
     if data[0] == "error":
         return pd.DataFrame(columns=["error"])
     label_Data = pd.DataFrame(data)
-    # print("lableData",label_Data.columns)
-    label_Data = label_Data.drop(["source_id"], axis=1)
-    label_Data = label_Data.fillna(0)
+    label_Data = filter_data(label_Data)
     return label_Data
 
 def gen_trainDataHourly():
@@ -90,20 +93,12 @@ def gen_trainDataHourly():
             date = minTime + td(days=d+1)
             # print(cityID, date.date())
             label_Data = label(cityID, date.date())
-            
+            label_Data = label_Data.drop(["timestamp"], axis=1)
             if "error" in label_Data:
                 continue
 
-            yield train_Data, label_Data
+            yield train_Data.values.tolist(), label_Data.values.tolist()
 
-def label_nextday(df):
-    df = df.drop(df.index[df["MESS_DATUM_ZEIT"].values == max(df["MESS_DATUM_ZEIT"])], axis=0)
-    print(df)
-    label = pd.DataFrame()
-    for d in range(len(df)):
-        ind = df.index[df["MESS_DATUM_ZEIT"].values == df["MESS_DATUM_ZEIT"][d]+ datetime.timedelta(days=1)]
-        label = pd.concat([df.iloc[ind]])
-    print(label)
 
 # if __name__ == "__main__":
 #     trainData = gen_trainDataHourly()
