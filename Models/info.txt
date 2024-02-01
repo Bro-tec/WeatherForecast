@@ -1,1 +1,1 @@
-Your Models will be saved in this file
+Your Models will be saved in this file as .h5 files 

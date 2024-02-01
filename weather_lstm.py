@@ -42,17 +42,17 @@ def load_own_Model(name):
         history=np.load(f'./Models/{name}_history.npy',allow_pickle='TRUE').item()
         print("Model found")
         return model, history
-    elif name == "Hourly" or name == "Hourly":
+    elif name == "Hourly" or name == "Hourly24":
         print("Data not found or not complete")
         model = Sequential()
-        model.add(LSTM( input_shape=(85,1), dropout = 0.2, units=22))
+        model.add(LSTM( input_shape=(85,1), units=22))
         model.add(Dense(6, activation = 'sigmoid' ))
         model.compile( optimizer = "adam" , loss = 'binary_crossentropy' , metrics = ['accuracy'] )
         return model, {}
     else:
         print("Data not found or not complete")
         model = Sequential()
-        model.add(LSTM( input_shape=(240,17,1), dropout = 0.2, units=22))
+        model.add(LSTM( input_shape=(240,17), dropout = 0.2, units=22, activation='linear'))
         model.add(Dense(6, activation = 'sigmoid' ))
         model.compile( optimizer = "adam" , loss = 'binary_crossentropy' , metrics = ['accuracy'] )
         return model, {}
@@ -63,7 +63,7 @@ def save_own_Model(name, history, model):
     model.save_weights(f"./Models/{name}_weights.h5")
     print("Saved model")
 
-def plotting_hist(history):
+def plotting_hist(history, name, i):
     # summarize history for accuracy
     plt.plot(history['accuracy'])
     plt.plot(history['val_accuracy'])
@@ -72,7 +72,8 @@ def plotting_hist(history):
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
     # plt.yticks([label/2 for label in plt.yticks()[0]])
-    plt.show()
+    plt.savefig(f'./Plots/{name}_plot_{i}_accuracy.png')
+    plt.close()
     # summarize history for loss
     plt.plot(history['loss'])
     plt.plot(history['val_loss'])
@@ -81,21 +82,23 @@ def plotting_hist(history):
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
     # plt.yticks([label/2 for label in plt.yticks()[0]])
-    plt.show()
+    plt.savefig(f'./Plots/{name}_plot_{i}_loss.png')
+    plt.close()
 
-early_stopper = EarlyStopping( monitor = 'val_acc' , min_delta = 0.0005, patience = 3 )
+def create_callbacks():
+    early_stopper = EarlyStopping( monitor = 'val_acc' , min_delta = 0.0005, patience = 3 )
+    reduce_lr = ReduceLROnPlateau( monitor = 'val_loss' , patience = 2 , cooldown = 0)
+    return [ reduce_lr , early_stopper]
 
-reduce_lr = ReduceLROnPlateau( monitor = 'val_loss' , patience = 2 , cooldown = 0)
+def train_LSTM(train, label, history, epoch_count=1, batch_size=10):
+    callbacks = create_callbacks()
 
-callbacks = [ reduce_lr , early_stopper]
-
-def train_LSTM(train, label):
     X_train, X_test, y_train, y_test = train_test_split(train, label, test_size=0.01, random_state=42)
 
     # train_history = model.fit( gld.gen_trainDataHourly(), epochs = 1, batch_size = batch_size, validation_data=2, validation_steps=1, verbose = 1 , callbacks = callbacks)
     train_history = model.fit( X_train, y_train, epochs = epoch_count, batch_size = batch_size, validation_split = 0.01 , verbose = 1 , callbacks = callbacks)
     
-    print(train_history.history)
+    # print(train_history.history)
     if len(history) > 0:
         for ky in history.keys():
             extended_values = train_history.history.get(ky, [])
@@ -110,36 +113,41 @@ def train_LSTM(train, label):
     print( "Accuracy: {:0.4}".format( score[1] ))
     return history, model
 
-epoch_count = 15
-batch_size = 24
 
+# round about34:03 each epoche
+for train, label, label24, i in gld.gen_trainDataHourly():
+    print("training count", train.shape[0])
+    name = "Hourly"
+    model, history = load_own_Model(name)
+    history, model = train_LSTM(train, label, history, epoch_count=2, batch_size=240)
+    save_own_Model(name, history, model)
+    plotting_hist(history, name, i)
+    
+    
+    name = "Hourly24"
+    model, history = load_own_Model(name)
+    history, model = train_LSTM(train, label24, history, epoch_count=2, batch_size=240)
+    save_own_Model(name, history, model)
+    plotting_hist(history, name, i)
 
-# for train, label, label24 in gld.gen_trainDataHourly():
-#     model, history = load_own_Model("Hourly")
-#     history, model = train_LSTM(train, label)
-#     save_own_Model("Hourly", history, model)
-#     plotting_hist(history)
-
-#     model, history = load_own_Model("Hourly24")
-#     history, model = train_LSTM(train, label)
-#     save_own_Model("Hourly24", history, model)
-#     plotting_hist(history)
-
-train_np = np.array([])
-for train, label_Daily, label_monthly in gld.gen_trainDataDaily():
+# train_np = np.array([])
+# for train, label_Daily, i in gld.gen_trainDataDaily():
     
 
-    model, history = load_own_Model("Daily")
-    history, model = train_LSTM(train, label_Daily)
-    save_own_Model("Daily", history, model)
-    plotting_hist(history)
+    # name = "Daily"
+#     model, history = load_own_Model(name)
+#     history, model = train_LSTM(train, label_Daily, history, epoch_count=1)
+#     save_own_Model(name, history, model)
+    # plotting_hist(history, name, i)
 
-    model, history = load_own_Model("Weekly")
-    history, model = train_LSTM(train, label_monthly)
-    save_own_Model("Weekly", history, model)
-    plotting_hist(history)
+    # name = "Weekly"
+    # model, history = load_own_Model(name)
+    # history, model = train_LSTM(train, label_monthly)
+    # save_own_Model(name, history, model)
+    # plotting_hist(history, name, i)
 
-    model, history = load_own_Model("Monthly")
-    history, model = train_LSTM(train, label_monthly)
-    save_own_Model("Monthly", history, model)
-    plotting_hist(history)
+    # name = "Monthly"
+    # model, history = load_own_Model(name)
+    # history, model = train_LSTM(train, label_monthly)
+    # save_own_Model(name, history, model)
+    # plotting_hist(history, name, i)
