@@ -1,4 +1,5 @@
 from CollectData import get_DWD_data as dwd # otherwise lstm cant import this
+import asyncio
 from datetime import datetime as dt
 from datetime import timedelta as td
 import pandas as pd
@@ -71,7 +72,7 @@ def joinDataHourly(cityID, cities, lc, date):
             newdata = dwd.getWeatherByStationIDDate(cities.iloc[i,j], date)
             i += 1
             if len(newdata) < 24:
-                if i-lc >= 10:
+                if i-lc >= 3:
                     return pd.DataFrame(columns=["error"])
                 lcount +=1
                 continue
@@ -135,6 +136,59 @@ def label24(cityID, date):
     label_Data = filter_dataComplete(label_Data)
     return label_Data[["temperature","wind_direction","wind_speed","visibility","condition","icon"]]
 
+async def get_DataHourlyAsync(row, cityP, date):
+    cityName = row.Name
+    cityID = row.ID
+    cities = getCities(cityP,cityName,"near")
+    # x = dt.now()
+    train_Data = joinDataHourly(cityID, cities, 4, date.date())
+    if "error" in train_Data or len(train_Data) < 25:
+        # print("joinDataHourly error dauer:", dt.now()-x)
+        return pd.DataFrame(columns=["error"])
+    # print("joinDataHourly dauer:", dt.now()-x)
+    if len(train_Data) > 25:
+        train_Data = train_Data[:25]
+    date = date + td(days=1)
+    label_Data24 = label24(cityID, date)
+    if "error" in label_Data24 or len(label_Data24) < 24:
+        # print("joinDataHourly unnötiger error dauer:", dt.now()-x)
+        return pd.DataFrame(columns=["error"])
+    if len(label_Data24) > 24:
+        label_Data24 = label_Data24[:24]
+    # label_Data = train_Data[["precipitation","pressure_msl","sunshine","temperature","wind_direction","wind_speed","cloud_cover","dew_point","relative_humidity","visibility","wind_gust_direction","wind_gust_speed","condition","precipitation_probability","precipitation_probability_6h","solar","icon"]]
+    # label_Data = train_Data[["temperature","wind_direction","wind_speed","visibility","condition","icon"]]
+    label_Data = train_Data[[3,4,5,9,12,16]]
+    return [train_Data[:-1], label_Data.iloc[1:], label_Data24]
+
+async def get_DataDailyAsync(row, cityP, date):
+    cityName = row.Name
+    cityID = row.ID
+    cities = getCities(cityP,cityName, "far")
+    x = dt.now()
+    train_Data = joinDataComplete(cityID, cities, 1, date.date())
+    print("Dauer von joinDataComplete:",dt.now()-x)
+    if "error" in train_Data:
+        return pd.DataFrame(columns=["error"]) 
+    # train_Data = joinDataMinMax(cityID, cities, 4, date.date())
+    date = date + td(days=1)
+    label_Data_Daily = labelMinMax(cityID, date)
+    if "error" in label_Data_Daily or len(label_Data_Daily) != 1:
+        return pd.DataFrame(columns=["error"])
+    return [train_Data, label_Data_Daily]
+
+async def DataHourlyAsync(cityP, date):
+    lists = await asyncio.gather(
+        *[get_DataHourlyAsync(row, cityP, date) for row in tqdm(cityP.itertuples(index=False),total=1562)]
+        )
+    print(lists)
+
+async def DataDailyAsync(cityP, date):
+    lists = await asyncio.gather(
+        *[get_DataHourlyAsync(row, cityP, date) for row in tqdm(cityP.itertuples(index=False),total=1562)]
+        )
+    print(lists)
+
+
 def DataHourly(cityP, date):
     train_np = np.zeros(shape=(1, 1))
     label_np = np.zeros(shape=(1, 1))
@@ -155,6 +209,7 @@ def DataHourly(cityP, date):
         date = date + td(days=1)
         label_Data24 = label24(cityID, date)
         if "error" in label_Data24 or len(label_Data24) < 24:
+            # print("joinDataHourly unnötiger error dauer:", dt.now()-x)
             continue
         if len(label_Data24) > 24:
             label_Data24 = label_Data24[:24]
@@ -162,14 +217,17 @@ def DataHourly(cityP, date):
         # label_Data = train_Data[["temperature","wind_direction","wind_speed","visibility","condition","icon"]]
         label_Data = train_Data[[3,4,5,9,12,16]]
         if i == 0:
-            train_np = train_Data[:-1].to_numpy()
-            label_np = label_Data.iloc[1:].to_numpy()
-            label24_np = label_Data24.to_numpy()
-            i+1
+            train_np = np.array([train_Data[:-1].to_numpy()])
+            label_np = np.array([label_Data.iloc[1:].to_numpy()])
+            label24_np = np.array([label_Data24.to_numpy()])
         else:
-            train_np += train_Data[:-1].to_numpy()
-            label_np += label_Data.iloc[1:].to_numpy()
-            label24_np += label_Data24.to_numpy()
+            train_np = np.concatenate([train_np,np.array([train_Data[:-1].to_numpy()])])
+            label_np = np.concatenate([label_np,np.array([label_Data.iloc[1:].to_numpy()])])
+            label24_np = np.concatenate([label24_np,np.array([label_Data24.to_numpy()])])
+        i+=1
+        if i == 5:
+            break
+        
     return train_np, label_np, label24_np
 
 def DataDaily(cityP, date):
@@ -190,10 +248,10 @@ def DataDaily(cityP, date):
         label_Data_Daily = labelMinMax(cityID, date)
         if "error" in label_Data_Daily or len(label_Data_Daily) != 1:
             continue
-        train_np = np.concatenate([train_np,[train_Data.to_numpy()]], axis=0)
-        label_np = np.concatenate([label_np,label_Data_Daily.to_numpy()], axis=0)
         if train_np.shape[0] == 5:
             break
+        train_np = np.concatenate([train_np,[train_Data.to_numpy()]], axis=0)
+        label_np = np.concatenate([label_np,label_Data_Daily.to_numpy()], axis=0)
     return train_np, label_np
 
 def gen_trainDataDaily():

@@ -1,10 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import torch
 import os
 # import pandas as pd
 # import tensorflow as tf
-import CollectData.get_learning_data as gld
 from sklearn.model_selection import train_test_split
 # from tqdm import tqdm
 from keras.models import Sequential, load_model
@@ -12,28 +10,13 @@ from keras.layers import Dense
 from keras.layers import LSTM
 # from sklearn.preprocessing import LabelEncoder
 from keras.callbacks import ReduceLROnPlateau, EarlyStopping
+
 # from keras.preprocessing.sequence import pad_sequences
 # from sklearn.preprocessing import MinMaxScaler
 # from sklearn.metrics import mean_squared_error
 import warnings
-# import tensorflow as tf
 
 warnings.filterwarnings('ignore')
-
-# trainData = gld.gen_trainDataHourly()
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-print("this devixe uses " + device + "to train data")
-
-# print(tf.compat.v1.keras.backend.tensorflow_backend._get_available_gpus())
-
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
-# net = net.to(device) 
-# input = input.to(device) 
-# labels = labels.to(device) 
-
-# gpus = tf.config.experimental.list_physical_devices('GPU')
-# print(gpus)
-model = []
 
 def load_own_Model(name):
     if  os.path.exists(f"./Models/{name}.h5") and os.path.exists(f"./Models/{name}_weights.h5") and os.path.exists(f"./Models/{name}_history.npy"):
@@ -47,7 +30,7 @@ def load_own_Model(name):
         model = Sequential()
         model.add(LSTM( input_shape=(85,1), units=22))
         model.add(Dense(6, activation = 'sigmoid' ))
-        model.compile( optimizer = "adam" , loss = 'binary_crossentropy' , metrics = ['accuracy'] )
+        model.compile( optimizer = "adam" , loss = 'binary_crossentropy' , metrics = ['accuracy'] ) 
         return model, {}
     else:
         print("Data not found or not complete")
@@ -56,6 +39,14 @@ def load_own_Model(name):
         model.add(Dense(6, activation = 'sigmoid' ))
         model.compile( optimizer = "adam" , loss = 'binary_crossentropy' , metrics = ['accuracy'] )
         return model, {}
+    
+    # could 'categorical_crossentropy' work here?
+    # In the case of Binary classification: two exclusive classes, you need to use binary cross entropy.
+    # In the case of Multi-class classification: more than two exclusive classes, you need to use categorical cross entropy.
+    # In the case of Multi-label classification: just non-exclusive classes, you need to use binary cross entropy.
+    # found this so i choosed binary cross entropy
+
+    # https://stats.stackexchange.com/questions/260505/should-i-use-a-categorical-cross-entropy-or-binary-cross-entropy-loss-for-binary
 
 def save_own_Model(name, history, model):
     np.save(f'./Models/{name}_history.npy',history)
@@ -90,7 +81,7 @@ def create_callbacks():
     reduce_lr = ReduceLROnPlateau( monitor = 'val_loss' , patience = 2 , cooldown = 0)
     return [ reduce_lr , early_stopper]
 
-def train_LSTM(train, label, history, epoch_count=1, batch_size=10):
+def train_LSTM(train, label, model, history, epoch_count=1, batch_size=10):
     callbacks = create_callbacks()
 
     X_train, X_test, y_train, y_test = train_test_split(train, label, test_size=0.01, random_state=42)
@@ -114,40 +105,3 @@ def train_LSTM(train, label, history, epoch_count=1, batch_size=10):
     return history, model
 
 
-# round about34:03 each epoche
-for train, label, label24, i in gld.gen_trainDataHourly():
-    print("training count", train.shape[0])
-    name = "Hourly"
-    model, history = load_own_Model(name)
-    history, model = train_LSTM(train, label, history, epoch_count=2, batch_size=240)
-    save_own_Model(name, history, model)
-    plotting_hist(history, name, i)
-    
-    
-    name = "Hourly24"
-    model, history = load_own_Model(name)
-    history, model = train_LSTM(train, label24, history, epoch_count=2, batch_size=240)
-    save_own_Model(name, history, model)
-    plotting_hist(history, name, i)
-
-# train_np = np.array([])
-# for train, label_Daily, i in gld.gen_trainDataDaily():
-    
-
-    # name = "Daily"
-#     model, history = load_own_Model(name)
-#     history, model = train_LSTM(train, label_Daily, history, epoch_count=1)
-#     save_own_Model(name, history, model)
-    # plotting_hist(history, name, i)
-
-    # name = "Weekly"
-    # model, history = load_own_Model(name)
-    # history, model = train_LSTM(train, label_monthly)
-    # save_own_Model(name, history, model)
-    # plotting_hist(history, name, i)
-
-    # name = "Monthly"
-    # model, history = load_own_Model(name)
-    # history, model = train_LSTM(train, label_monthly)
-    # save_own_Model(name, history, model)
-    # plotting_hist(history, name, i)
