@@ -4,13 +4,14 @@ from datetime import datetime as dt
 from datetime import timedelta as td
 import pandas as pd
 import numpy as np # euclidean: 34:03 each epoche
-from tqdm import tqdm
+from progress.bar import Bar
 import math
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 icons = ["clear-day", "clear-night", "partly-cloudy-day", "partly-cloudy-night", "cloudy", "fog", "wind", "rain", "sleet", "snow", "hail", "thunderstorm", "dry", "moist", "wet", "rime", "ice", "glaze", "not dry", "reserved", None]
-
+hourly_bar = Bar('Processing', max=20)
+daily_bar = 0
 
 def load_stations_csv():
     return pd.read_csv('stations.csv',dtype={'ID': object}) # otherwise lstm cant load this
@@ -149,17 +150,19 @@ async def get_DataHourlyAsync(row, cityP, date):
     cities = await getCities(cityP,cityID,"near")
     train_Data = await joinDataHourly(cityID, cities, 4, date.date())
     if "error" in train_Data or len(train_Data) < 25:
+        hourly_bar.next()
         return pd.DataFrame(columns=["error"])
     if len(train_Data) > 25:
         train_Data = train_Data[:25]
     date = date + td(days=1)
     label_Data24 = await label24(cityID, date)
     if "error" in label_Data24 or len(label_Data24) < 24:
+        hourly_bar.next()
         return pd.DataFrame(columns=["error"])
     if len(label_Data24) > 24:
         label_Data24 = label_Data24[:24]
     label_Data = train_Data[[3,4,5,9,12,16]]
-    print("done", cityID)
+    hourly_bar.next()
     return train_Data[:-1].to_numpy(), label_Data.iloc[1:].to_numpy(), label_Data24.to_numpy()
 
 async def get_DataDailyAsync(row, cityP, date):
@@ -169,15 +172,20 @@ async def get_DataDailyAsync(row, cityP, date):
     train_Data = await joinDataComplete(cityID, cities, 1, date.date())
     print("Dauer von joinDataComplete:",dt.now()-x)
     if "error" in train_Data:
+        hourly_bar.next()
         return pd.DataFrame(columns=["error"]) 
     # train_Data = await joinDataMinMax(cityID, cities, 4, date.date())
     date = date + td(days=1)
     label_Data_Daily = await labelMinMax(cityID, date)
     if "error" in label_Data_Daily or len(label_Data_Daily) != 1:
+        hourly_bar.next()
         return pd.DataFrame(columns=["error"])
+    hourly_bar.next()
     return [train_Data, label_Data_Daily]
 
 async def DataHourlyAsync(cityloop, cityP, date):
+    global hourly_bar 
+    hourly_bar = Bar('Processing', max=len(cityloop))
     lists = await asyncio.gather(
         *[get_DataHourlyAsync(row, cityP, date) for row in cityloop.itertuples(index=False)]
         )
@@ -196,16 +204,18 @@ async def DataHourlyAsync(cityloop, cityP, date):
                 train_np = np.concatenate([train_np,np.array([l[0]])], axis=1)
                 label_np = np.concatenate([label_np,np.array([l[1]])], axis=1)
                 label24_np = np.concatenate([label24_np,np.array([l[2]])], axis=1)
-    print("train", train_np.shape)
-    print("label", label_np.shape)
-    print("label24", label24_np.shape)
+    # print("train", train_np.shape)
+    # print("label", label_np.shape)
+    # print("label24", label24_np.shape)
     if train_np.shape[1] == 1:
         return "error", "error", "error" 
     return train_np.reshape(-1, train_np.shape[2]), label_np.reshape(-1, label_np.shape[2]), label24_np.reshape(-1, label24_np.shape[2])
 
-async def DataDailyAsync(cityP, date):
+async def DataDailyAsync(cityloop, cityP, date):
+    global daily_bar 
+    daily_bar = Bar('Processing', max=len(cityP))
     lists = await asyncio.gather(
-        *[get_DataDailyAsync(row, cityP, date) for row in cityP.itertuples(index=False)]
+        *[get_DataDailyAsync(row, cityP, date) for row in cityloop.itertuples(index=False)]
         )
     train_np = np.zeros(shape=(1, 240, 17))
     label_np = np.zeros(shape=(1, 6))
@@ -225,8 +235,22 @@ def gen_trainDataDaily_Async():
     print(duration, "=", actualTime, "-", minTime)
     for d in range(duration.days-1):
         date = minTime + td(days=d)
-        print(d)
-        x,y = asyncio.run(DataDailyAsync(cityP, date))
+        # x,y = asyncio.run(DataDailyAsync(cityP, date))
+        redos = 15
+        # print(len(cityP),"/", redos)
+        s = math.floor(len(cityP)/redos)
+        # print("=",s)
+        for i in range(redos):
+            # print(i)
+            if i == redos-1:
+                x,y = asyncio.run(DataDailyAsync(cityP[s*i:], cityP, date))
+            else:
+                x,y = asyncio.run(DataDailyAsync(cityP[s*i:s*(i+1)], cityP, date))
+            if x == "error":
+                print("was error so code continued")
+                continue
+            print("train", x.shape)
+            print("label", y.shape)
         yield x,y,d
 
 def gen_trainDataHourly_Async():
@@ -237,13 +261,12 @@ def gen_trainDataHourly_Async():
     print(duration, "=", actualTime, "-", minTime)
     for d in range(duration.days-1):
         date = minTime + td(days=d)
-        print(d)
-        redos = 10
-        print(len(cityP),"/", redos)
+        redos = 15
+        # print(len(cityP),"/", redos)
         s = math.floor(len(cityP)/redos)
-        print("=",s)
+        # print("=",s)
         for i in range(redos):
-            print(i)
+            # print(i)
             if i == redos-1:
                 x,y,z = asyncio.run(DataHourlyAsync(cityP[s*i:], cityP, date))
             else:

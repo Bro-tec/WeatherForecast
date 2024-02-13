@@ -1,4 +1,4 @@
-import weather_lstm as wl
+import weather_lstm_keras as wl
 import CollectData.get_learning_data as gld
 import numpy as np
 
