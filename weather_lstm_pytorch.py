@@ -12,8 +12,8 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
 from torchmetrics.classification import MulticlassConfusionMatrix
-import seaborn as sns
 import warnings
+import random
 plt.switch_backend('agg')
 
 warnings.filterwarnings('ignore')
@@ -119,8 +119,8 @@ def plotting_hist(history, metric, name, saving_mode="normal", t=0):
     fig, ax = metric.plot()
     ax.set_xlabel('Predicted labels')
     ax.set_ylabel('True labels')
-    fig.set_figwidth(20)
-    fig.set_figheight(20)
+    fig.set_figwidth(16)
+    fig.set_figheight(16)
     plt.title('Confusion Matrix')
     ax.xaxis.set_ticklabels(icons)
     ax.yaxis.set_ticklabels(icons)
@@ -218,7 +218,7 @@ def train_LSTM(name, feature, label, model, optimizer, loss_fn, metric, history,
             # print("first output", output)
             
             scaled_label = scale_label(label, name)
-            output[scaled_label==0.0] = 0.0
+            output[scaled_label==0.0] = random.uniform(0, 1)
             # print("scaled label", scaled_label)
             # print("last output", output)
             optimizer.zero_grad() #caluclate the gradient, manually setting to 0
