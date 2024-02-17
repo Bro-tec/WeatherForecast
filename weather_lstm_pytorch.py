@@ -218,7 +218,8 @@ def train_LSTM(name, feature, label, model, optimizer, loss_fn, metric, history,
             # print("first output", output)
             
             scaled_label = scale_label(label, name)
-            output[scaled_label==0.0] = random.uniform(0, 1)
+            # output[scaled_label==0.0] = 0.0
+            scaled_label[scaled_label==0.0] = random.uniform(0, 1)
             # print("scaled label", scaled_label)
             # print("last output", output)
             optimizer.zero_grad() #caluclate the gradient, manually setting to 0
