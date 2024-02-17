@@ -23,19 +23,19 @@ def getSourcesByStationIDDate(i, date):
     else:
         return "error","error"
 
-async def getWeatherByStationIDDate(i, date, wait=True):
+async def getWeatherByStationIDDate(i, date, wait=True, delay=2):
     if wait:
-        await asyncio.sleep(random.uniform(0, 2))
+        await asyncio.sleep(random.uniform(0, delay))
     try:
         # print(f"https://api.brightsky.dev/weather?dwd_station_id={i}&date=2020-04-21")
         async with aiohttp.ClientSession() as session:
             async with session.get(f"https://api.brightsky.dev/weather?dwd_station_id={i}&date={date}") as response:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.2)
                 # print(i, ":", response.status)
                 if str(response.status) == "429":
                     # print(i, ":", "redoing")
                     # await asyncio.sleep(random.uniform(2, 4))
-                    return await getWeatherByStationIDDate(i, date)
+                    return await getWeatherByStationIDDate(i, date, delay=15)
                 elif str(response.status)[0] == "2": # raises exception when not a 2xx response
                     WeatherData = await response.json()
                     if "weather" in WeatherData.keys():
