@@ -8,7 +8,12 @@ times_list = []
 
 device = wl.check_cuda()
 
-for train, label_Daily1, label_Daily2, label_Daily3, label_Daily4, label_Daily5, label_Daily6, label_Daily7, i in gld.gen_trainDataDaily_Async():
+# round about 34:03 min each fit for 200 cities due to data loading (mostly because of concats)
+# round about 1 to 10 min each fit for all cities due to async
+
+# if u already trained some days and dont want to retrain them type:
+# skip_days=<days> in gld.gen_trainDataHourly_Async
+for train, label_Daily1, label_Daily2, label_Daily3, label_Daily4, label_Daily5, label_Daily6, label_Daily7, i in gld.gen_trainDataDaily_Async(skip_days=1500):
     print(train.shape)
     print(label_Daily1.shape)
     

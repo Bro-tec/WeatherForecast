@@ -13,13 +13,13 @@ device = wl.check_cuda()
 
 # if u already trained some days and dont want to retrain them type:
 # skip_days=<days> in gld.gen_trainDataHourly_Async
-for train, label, label24, i in gld.gen_trainDataHourly_Async():
+for train, label, label24, i in gld.gen_trainDataHourly_Async(skip_days=12):
     print("\ntraining count", train.shape)
 
     mode = "timestep"
     
     name = "Hourly"
-    model, optimizer, loss_fn, metric, history = wl.load_own_Model(name, device, loading_mode=mode, t=i, learning_rate=0.000000005 ) # 1/(5160*1561*24) ungefair 5e-9
+    model, optimizer, loss_fn, metric, history = wl.load_own_Model(name, device, loading_mode=mode, t=i) # 1/(5160*1561*24) ungefair 5e-9
     model, history = wl.train_LSTM(name,train, label, model, optimizer, loss_fn, metric, history, device, epoch_count=1)
     wl.save_own_Model(name, history, model, saving_mode=mode, t=i)
     wl.plotting_hist(history, metric, name, saving_mode=mode, t=i)

@@ -18,13 +18,13 @@ plt.switch_backend('agg')
 
 warnings.filterwarnings('ignore')
 
-# trainData = gld.gen_trainDataHourly()
+# checking if cuda is used. if not it choses cpu
 def check_cuda():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print("this device uses " + device + " to train data")
     return torch.device(device)
 
- 
+# creating my lstm
 class PyTorch_LSTM(nn.Module):
     def __init__(self, input, device, hidden=360, layer=3, outputs=6):
         self.output_size = outputs
@@ -34,18 +34,25 @@ class PyTorch_LSTM(nn.Module):
         self.lstm = nn.LSTM(input_size=input, hidden_size=hidden, num_layers=layer, bidirectional=True, batch_first=True).to(device)
         self.fc = nn.Linear(hidden*2, outputs).to(device)
         self.soft = nn.Softmax().to(device)
+        self.sig = nn.Sigmoid().to(device)
     def forward(self, input, device):
         hidden_state = Variable(torch.zeros(self.num_layer*2, input.size(0), self.hidden_size).to(device)).to(device)
         cell_state = Variable(torch.zeros(self.num_layer*2, input.size(0), self.hidden_size).to(device)).to(device)
         out, (hn, cn) = self.lstm(input, (hidden_state, cell_state))
+        # out = out[-1,-1,:]
+        # reshaping output to 1d tensor
         out = out[:,-1,:]
-        # out = out.view(-1, ) #reshaping the data for Dense layer next
         out = out[-1,:]
-        out = self.soft(out) #softmax
+        #softmax to change value output
+        out = self.soft(out) 
         out = self.fc(out)
+        # sigmoid for the labels
+        out[4] = self.sig(out[4])
+        out[5] = self.sig(out[5])
         return out
 
-def load_own_Model(name, device, loading_mode="normal", t=0, input_count=86, learning_rate=0.0000001):
+# loading model if already saved or creating a new model
+def load_own_Model(name, device, loading_mode="normal", t=0, input_count=86, learning_rate=0.0001):
     history = {"accuracy":[0], "loss":[0], "val_accuracy":[0], "val_loss":[0]}
     model = PyTorch_LSTM(input_count, device)
     if loading_mode=="timestep" or loading_mode=="ts":
@@ -75,10 +82,11 @@ def load_own_Model(name, device, loading_mode="normal", t=0, input_count=86, lea
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     model.train()
     loss_fn = nn.KLDivLoss().to(device)
-    # loss_fn = nn.MultiMarginLoss().to(device)
     metric = MulticlassConfusionMatrix(num_classes=21).to(device)
     return model, optimizer, loss_fn, metric, history
 
+# saving model if saving_mode set to ts or timestamp it will use the number for the model to save it.
+# ts helps to choose saved model data before the model started to overfit or not work anymore
 def save_own_Model(name, history, model, saving_mode="normal", t=0):
     if saving_mode=="timestep" or saving_mode=="ts":
         with open(f"./Models/{name}_history_{str(t)}.json", "w") as fp:  
@@ -90,7 +98,8 @@ def save_own_Model(name, history, model, saving_mode="normal", t=0):
             json.dump(history, fp)
         torch.save(model.state_dict(), f"./Models/{name}.pth")
         print("Saved model")
-    
+
+# plotting Evaluation via Accuracy, Loss and MulticlassConfusionMatrix
 def plotting_hist(history, metric, name, saving_mode="normal", t=0):
     icons = [None, "clear-day", "clear-night", "partly-cloudy-day", "partly-cloudy-night", "cloudy", "fog", "wind", "rain", "sleet", "snow", "hail", "thunderstorm", "dry", "moist", "wet", "rime", "ice", "glaze", "not dry", "reserved"]
     name_tag = f'{name}_plot'
@@ -115,7 +124,7 @@ def plotting_hist(history, metric, name, saving_mode="normal", t=0):
     plt.savefig(f'./Plots/{name_tag}_loss.png')
     plt.close()
     
-    # plt.figure()
+    # summarize MulticlassConfusionMatrix
     fig, ax = metric.plot()
     ax.set_xlabel('Predicted labels')
     ax.set_ylabel('True labels')
@@ -127,6 +136,7 @@ def plotting_hist(history, metric, name, saving_mode="normal", t=0):
     plt.savefig(f'./Plots/{name_tag}_matrix.png')
     plt.close()
 
+# unscaling the output because it usually doesnt get over 1
 def unscale_output(output, name):
     if name == "Hourly" or name == "Hourly24":
         output[0] *= 100
@@ -143,7 +153,8 @@ def unscale_output(output, name):
         output[4] *= 21
         output[5] *= 21
     return output
-        
+
+# scaling label to check if output was good enough
 def scale_label(output, name):
     if name == "Hourly" or name == "Hourly24":
         output[0] /= 100
@@ -161,115 +172,85 @@ def scale_label(output, name):
         output[5] /= 21
     return output
 
+# whole training of the LSTM features and labels need to be 2d shaped
 def train_LSTM(name, feature, label, model, optimizer, loss_fn, metric, history, device, epoch_count=1):
-    # scaled_X_ss = pr.StandardScaler().fit_transform(feature)
-    # scaled_X_rs = pr.RobustScaler().fit_transform(feature)
-    # scaled_X_pt = pr.PowerTransformer().fit_transform(feature)
-    # scaled_X_n = pr.Normalizer().fit_transform(feature)
-    
-    # print(feature.shape)
-    # print(feature[0])
-    # print("StandardScaler")
-    # print(scaled_X_ss.shape)
-    # print(scaled_X_ss[0])
-    # print("RobustScaler")
-    # print(scaled_X_rs.shape)
-    # print(scaled_X_rs[0])
-    # print("PowerTransformer")
-    # print(scaled_X_pt.shape)
-    # print(scaled_X_pt[0])
-    # print("Normalizer")
-    # print(scaled_X_n.shape)
-    # print(scaled_X_n[0])
-
     X_train, X_test, y_train, y_test = train_test_split(feature, label, test_size=0.02, random_state=42)
-    # print("X_train:",X_train.shape, ", X_test:", X_test.shape, ", y_train:", y_train.shape, ", y_test:", y_test.shape)
-    
     X_train_tensors = Variable(torch.Tensor(X_train).to(device)).to(device)
     X_test_tensors = Variable(torch.Tensor(X_test).to(device)).to(device)
-
     y_train_tensors = Variable(torch.Tensor(y_train)).to(device)
     y_test_tensors = Variable(torch.Tensor(y_test)).to(device)
-    # print("X_train_tensors:",X_train_tensors.shape, ", X_test_tensors:", X_test_tensors.shape, ", y_train_tensors:", y_train_tensors.shape, ", y_test_tensors:", y_test_tensors.shape)
-    
     X_train_tensors = torch.reshape(X_train_tensors, (X_train_tensors.shape[0], 1, X_train_tensors.shape[1])).to(device)
     X_test_tensors = torch.reshape(X_test_tensors, (X_test_tensors.shape[0], 1, X_test_tensors.shape[1])).to(device) 
-    # print("X_train_tensors:",X_train_tensors.shape, ", X_test_tensors:", X_test_tensors.shape, ", y_train_tensors:", y_train_tensors.shape, ", y_test_tensors:", y_test_tensors.shape)
     
     if len(y_train_tensors.shape) >= 3:
         y_train_tensors = torch.reshape(y_train_tensors, (y_train_tensors.shape[0], y_train_tensors.shape[-1])).to(device)
         y_test_tensors = torch.reshape(y_test_tensors, (y_test_tensors.shape[0], y_test_tensors.shape[-1])).to(device) 
-        
+    
+    # epoche just repeats the training with excactly the same values
     for epoch in range(epoch_count):
         loss_list = []
         acc_list = []
         val_loss_list = []
         val_acc_list = []
+        # trains the value using each input and label
         for input, label in tqdm(zip(X_train_tensors, y_train_tensors), total=X_train_tensors.shape[0]):
             input_final = torch.reshape(input, (input.shape[0], 1, input.shape[1])).to(device)
-            # print("first label", label)
-            
-            output = model.forward(input_final, device) #forward pass
-            
-            # print(output[-2:])
+            # predicted values
+            output = model.forward(input_final, device)
+            # inplementig data into MulticlassConfusionMatrix
             metric_output = unscale_output(output, name)
-            # print(metric_output[-2:], label[-2:])
             metric.update(metric_output[-2:], label[-2:])
-            # print("first output", output)
             
             scaled_label = scale_label(label, name)
-            # output[scaled_label==0.0] = 0.0
-            scaled_label[scaled_label==0.0] = random.uniform(0, 1)
-            # print("scaled label", scaled_label)
-            # print("last output", output)
-            optimizer.zero_grad() #caluclate the gradient, manually setting to 0
+            # scaled_label[scaled_label==0.0] = random.uniform(0, 1)
+            output[scaled_label==0.0] = 0.0
+            #caluclate the gradient, manually setting to 0
+            optimizer.zero_grad() 
             # obtain the loss function
             loss = loss_fn(output, scaled_label)
-            loss.backward(retain_graph=True) #calculates the loss of the loss function
-            optimizer.step() #improve from loss, i.e backprop
-            # print(output, " == ", scaled_label)
+            # calculates the loss of the loss function
+            loss.backward(retain_graph=True) 
+            # improve from loss, this is the actual backpropergation
+            optimizer.step() 
+            # calculating loss and counting accuricy
             loss_list.append(float(loss.item()))
-            # print((((output >= scaled_label-0.005)&(output <= scaled_label+0.005) | (scaled_label==0))).float().sum())
             acc_list.append((((output >= scaled_label-0.02)&(output <= scaled_label+0.02))).float().sum()/6)
             
         my_acc = torch.FloatTensor(acc_list).to(device)
+        # setting nan values to 0 to calculate the mean
         my_acc[my_acc != my_acc] = 0
         my_acc = my_acc.mean()
         my_loss = torch.FloatTensor(loss_list).to(device)
         my_loss[my_loss != my_loss] = 0
         my_loss = my_loss.mean()
+        # showing training
         history['loss'].append(float(my_loss)) 
         history['accuracy'].append(float(my_acc)) 
         print("Epoch {}/{}, Loss: {:.5f}, Accuracy: {:.5f}".format(epoch+1,epoch_count, my_loss, my_acc))
-    
+
+        # testing trained model on unused values
         for input, label in tqdm(zip(X_test_tensors, y_test_tensors), total=X_test_tensors.shape[0]):
             input_final = torch.reshape(input, (input.shape[0], 1, input.shape[1])).to(device)
             output = model.forward(input_final, device) #forward pass
             
             metric_output = unscale_output(output, name)
             metric.update(metric_output[-2:], label[-2:])
-            # print("first output", output)
-            
-            # print("first label", label)
             scaled_label = scale_label(label, name)
-            
-            # print("scaled label", scaled_label)
+            # scaled_label[scaled_label==0.0] = random.uniform(0, 1)
             output[scaled_label==0.0] = 0.0
-            
-            # print("last output", output)
             
             loss = loss_fn(output, scaled_label)
             val_loss_list.append(loss.item())
-            # print(output, " == ", label)
-            # print((((output >= scaled_label-0.005)&(output <= scaled_label+0.005) | (scaled_label==0))).float().sum())
             val_acc_list.append((((output >= scaled_label-0.002)&(output <= scaled_label+0.002))).float().sum()/6)
         
         my_val_acc = torch.FloatTensor(val_acc_list).to(device)
+        # setting nan values to 0 to calculate the mean
         my_val_acc[my_val_acc !=my_val_acc] = 0
         my_val_acc = my_val_acc.mean()
         my_val_loss = torch.FloatTensor(val_loss_list).to(device)
         my_val_loss[my_val_loss != my_val_loss] = 0
         my_val_loss = my_val_loss.mean()
+        # showing testing
         history['val_loss'].append(float(my_val_loss))
         history['val_accuracy'].append(float(my_val_acc)) 
         print("val Loss: {:.5f}, val Accuracy: {:.5f}".format(my_val_loss, my_val_acc))
@@ -277,20 +258,21 @@ def train_LSTM(name, feature, label, model, optimizer, loss_fn, metric, history,
     
     return model, history
 
+# plotting predicted data only for hourly named models
+# future predictions has no labels so they can't be printed
 def plotting_Prediction_hourly(all_input, output, plot_text, hourly=[], hourly24=[], mode="normal", t=0):
     titles = ["Temperature","Wind direction","Wind speed","Visibility"]
     input = [all_input[3],all_input[4],all_input[5],all_input[9],all_input[12],all_input[16]]
     x = [1, 2, 25]
     name = "Hourly"
-    # summarize history for accuracy
-    fig, axs = plt.subplots(len(titles), 1, figsize=(12, 8))
+    fig, axs = plt.subplots(len(titles)+1, 1, figsize=(12, 8))
     for i in range(len(titles)):
         axs[i].set_title(titles[i])
         axs[i].plot(x,[input[i],output[0][0][i].item(),output[1][0][i].item()])
         if plot_text != "future":
             axs[i].plot(x,[input[i],hourly[i],hourly24[i]])
-        # axs[i].ylabel('temp')
-        # axs[i].xlabel('time')
+        axs[len(titles)].text(0, 0, f'icon: real-{hourly[4]} / prediction-{output[0][0][4]}, icon: real-{hourly[4]}/ prediction-{output[0][0][5]}', fontsize=15)
+        axs[len(titles)].text(0, 1, f'icon: real-{hourly24[4]} / prediction-{output[1][0][4]}, icon: real-{hourly24[4]}/ prediction-{output[1][0][5]}', fontsize=15)
     
     if plot_text != "future":
         plt.legend(['predicted', 'real'], loc='upper left')
@@ -301,14 +283,14 @@ def plotting_Prediction_hourly(all_input, output, plot_text, hourly=[], hourly24
     else:
         plt.savefig(f'./Plots/{name}_prediction_{plot_text}.png')
     
-    
+# plotting predicted data only for daily named models
+# future predictions has no labels so they can't be printed
 def plotting_Prediction_Daily(all_input, output, plot_text, label1=[], label2=[], label3=[], label4=[], label5=[], label6=[], label7=[], mode="normal", t=0):
     titles = ["Temperature","Wind speed"]
     input = [all_input[0][3],all_input[0][5],all_input[0][12],all_input[0][16]]
     x = [i for i in range(8)]
     name = "Daily"
-    # summarize history for accuracy
-    fig, axs = plt.subplots(2, 1, figsize=(12, 8))
+    fig, axs = plt.subplots(3, 1, figsize=(12, 8))
     for i in range(len(titles)):
         axs[i].set_title(titles[i])
     axs[0].plot(x,[input[0],*[output[i][0][0].item() for i in range(7)]])
@@ -320,8 +302,13 @@ def plotting_Prediction_Daily(all_input, output, plot_text, label1=[], label2=[]
         axs[0].plot(x,[input[0],label1[0][0][1], label2[0][0][1], label3[0][0][1], label4[0][0][1], label5[0][0][1], label6[0][0][1], label7[0][0][1]])
         axs[1].plot(x,[input[1],label1[0][0][2], label2[0][0][2], label3[0][0][2], label4[0][0][2], label5[0][0][2], label6[0][0][2], label7[0][0][2]])
         axs[1].plot(x,[input[1],label1[0][0][3], label2[0][0][3], label3[0][0][3], label4[0][0][3], label5[0][0][3], label6[0][0][3], label7[0][0][3]])
-    # axs[i].ylabel('temp')
-    # axs[i].xlabel('time')
+        axs[2].text(0, 0, f'icon: real-{label1[0][0][4]} / prediction-{output[0][0][4]}, icon: real-{label1[0][0][5]}/ prediction-{output[0][0][5]}', fontsize=15)
+        axs[2].text(0, 1, f'icon: real-{label2[0][0][4]} / prediction-{output[1][0][4]}, icon: real-{label2[0][0][5]}/ prediction-{output[1][0][5]}', fontsize=15)
+        axs[2].text(0, 2, f'icon: real-{label3[0][0][4]} / prediction-{output[2][0][4]}, icon: real-{label3[0][0][5]}/ prediction-{output[2][0][5]}', fontsize=15)
+        axs[2].text(0, 3, f'icon: real-{label4[0][0][4]} / prediction-{output[3][0][4]}, icon: real-{label4[0][0][5]}/ prediction-{output[3][0][5]}', fontsize=15)
+        axs[2].text(0, 4, f'icon: real-{label5[0][0][4]} / prediction-{output[4][0][4]}, icon: real-{label5[0][0][5]}/ prediction-{output[4][0][5]}', fontsize=15)
+        axs[2].text(0, 5, f'icon: real-{label6[0][0][4]} / prediction-{output[5][0][4]}, icon: real-{label6[0][0][5]}/ prediction-{output[5][0][5]}', fontsize=15)
+        axs[2].text(0, 6, f'icon: real-{label7[0][0][4]} / prediction-{output[6][0][4]}, icon: real-{label7[0][0][5]}/ prediction-{output[6][0][5]}', fontsize=15)
     
     if plot_text != "future":
         plt.legend(['min predicted', 'max predicted', 'min real', 'max real'], loc='upper left')
@@ -332,17 +319,15 @@ def plotting_Prediction_Daily(all_input, output, plot_text, label1=[], label2=[]
     else:
         plt.savefig(f'./Plots/{name}_prediction_{plot_text}.png')
         
-
+# aktively used reshaping and predicting
 def prediction(model, train, name, device):
     train_tensors = Variable(torch.Tensor(train).to(device)).to(device)
     input_final = torch.reshape(train_tensors, (1, 1, train_tensors.shape[-1])).to(device)
-    # print(input_final.shape)
     output = model.forward(input_final, device)
-    # print("normal: ", output)
     output = unscale_output(output=output, name=name)
-    # print("unscaled: ", output)
     return [output]
 
+# prediction main code specially for hourly models 
 def predictHourly(date, device, mode="normal", model_num=0, id="", city="", time=-1):
     out_list = []
     if date <= dt.now()-td(days=2):
@@ -367,7 +352,8 @@ def predictHourly(date, device, mode="normal", model_num=0, id="", city="", time
             out_list.append(prediction(model24, train[time], "Hourly", device))
             plotting_Prediction_hourly(train[time], out_list, "future", mode=mode, t=model_num)
 
-def predictDaily(date, device, mode="normal", model_num=0, id="", city="", time=-1):
+# prediction main code specially for daily models 
+def predictDaily(date, device, mode="normal", model_num=0, id="", city=""):
     out_list = []
     if date <= dt.now()-td(days=2):
         train, label1, label2, label3, label4, label5, label6, label7 = gld.get_predictDataDaily(date, id=id)
