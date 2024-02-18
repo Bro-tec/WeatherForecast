@@ -3,10 +3,9 @@ CollectData/__pycache__/
 CollectData/package.json
 CollectData/node_modules
 stations.csv
-Database/Cities.db
-Database/Cloudiness.db
-Database/Extreme_wind.db
-Database/Moisture.db
-Database/Pressure.db
-Database/Temperature.db
-Database/Wind.db
+Database/
+Plotslots/
+not needed Plots/
+plots for ppp/
+Models/
+__pycache__
