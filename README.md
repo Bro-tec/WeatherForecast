@@ -27,8 +27,8 @@ following libraries are needed:
 
 
 ## First u need to get the get stations.csv
-Run the file get_DWD_data.py in the folder CollectData <br>
-or <br>
+Run the file get_DWD_data.py in the folder CollectData 
+#### or 
 load the data from (https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E?usp=sharing) and save it into the Weatherpredicter folder.
 
 
@@ -36,7 +36,7 @@ load the data from (https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25yt
 Run the files trainDailyModels.py and trainHourlyModes.py in the folder WeatherPredicter
 You can run the Normal mode but its recomendet to use the Timestamp mode, if the device has enough memory. 
 your models and the model histories will be saved into Models and you can see the confusion matrix for the labels, the loss and the accuracy curve in Plots
-### or 
+#### or 
 load the data from (https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E?usp=sharing) and save it into the Models folder.
 
 ## Now You are ready
