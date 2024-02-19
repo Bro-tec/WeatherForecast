@@ -25,7 +25,6 @@ The data gets retrieverd using Brightsky Api.
 - torchmetrics
 - requests
 - aiohttp
-- asyncio
 
 <br>
 
