@@ -15,7 +15,7 @@ skip = 0
 # if u already trained some days and dont want to retrain them type:
 # skip_days=<days> in gld.gen_trainDataHourly_Async
 mode = input(
-    "Decide with which mode you want to save your model.\nTimestemp  - your code will be saved into multiple models to be able to obtain a model before overfitting\nNormal  - if you chose something invalid your model will automatically be setted to Normal\n Choose: "
+    "Decide with which mode you want to save your model.\nTimestemp(ts)  - your code will be saved into multiple models to be able to obtain a model before overfitting\nNormal(n)   - if you chose something invalid your model will automatically be setted to Normal\n Choose: "
 )
 mode = mode.lower()
 if mode == "timestep" or mode == "ts":

@@ -140,7 +140,7 @@ async def joinDataHourly(cityID, cities, lc, date):
             )
             i += 1
             if len(newdata) < 24:
-                if lcount >= lc * 5:
+                if lcount >= lc * 7:
                     print("error occured")
                     return pd.DataFrame(columns=["error"])
                 lcount += 1

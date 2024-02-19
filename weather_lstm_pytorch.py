@@ -33,7 +33,7 @@ class PyTorch_LSTM(nn.Module):
     def __init__(self, inputs, device, layer=3, outputs=6):
         self.output_size = outputs
         self.num_layer = layer
-        self.hidden_size = int(round((inputs + outputs) / 2))
+        self.hidden_size = int(round(inputs / 10))
         super(PyTorch_LSTM, self).__init__()
         self.lstm = nn.LSTM(
             input_size=inputs,
@@ -54,12 +54,8 @@ class PyTorch_LSTM(nn.Module):
             torch.zeros(self.num_layer * 2, input.size(0), self.hidden_size).to(device)
         ).to(device)
         out, (hn, cn) = self.lstm(input, (hidden_state, cell_state))
-        # out = out[-1,-1,:]
         # reshaping output to 1d tensor
-        out = out[:, -1, :]
-        out = out[-1, :]
-        # softmax to change value output
-        out = self.soft(out)
+        out = out[-1,-1,:]
         out = self.fc(out)
         # sigmoid for the labels
         out[4] = self.sig(out[4])
@@ -67,9 +63,9 @@ class PyTorch_LSTM(nn.Module):
         return out
 
 
-# loading model if already saved or creating a new model
+# loading model if already saved or creating a new model lr 0.07 0.001
 def load_own_Model(
-    name, device, loading_mode="normal", t=0, input_count=86, learning_rate=0.0001
+    name, device, loading_mode="normal", t=0, input_count=86, learning_rate=0.001
 ):
     history = {"accuracy": [0], "loss": [0], "val_accuracy": [0], "val_loss": [0]}
     model = PyTorch_LSTM(input_count, device)
@@ -92,6 +88,7 @@ def load_own_Model(
             print("Model found")
         else:
             print("Data not found or not complete")
+
     else:
         if os.path.exists(f"./Models/{name}.pth") and os.path.exists(
             f"./Models/{name}.pth"
@@ -379,14 +376,14 @@ def plotting_Prediction_hourly(
             axs[i].plot(x, [input[i], hourly[i], hourly24[i]])
         axs[len(titles)].text(
             0,
-            0,
-            f"icon: real-{hourly[4]} / prediction-{output[0][0][4]}, icon: real-{hourly[4]}/ prediction-{output[0][0][5]}",
+            0.3,
+            f"icon: real-{hourly[4]} / prediction-{output[0][0][4]}, condition: real-{hourly[4]}/ prediction-{output[0][0][5]}",
             fontsize=15,
         )
         axs[len(titles)].text(
             0,
-            1,
-            f"icon: real-{hourly24[4]} / prediction-{output[1][0][4]}, icon: real-{hourly24[4]}/ prediction-{output[1][0][5]}",
+            0.6,
+            f"24 icon: real-{hourly24[4]} / prediction-{output[1][0][4]}, condition: real-{hourly24[4]}/ prediction-{output[1][0][5]}",
             fontsize=15,
         )
 
@@ -483,44 +480,44 @@ def plotting_Prediction_Daily(
         axs[2].text(
             0,
             0,
-            f"icon: real-{label1[0][0][4]} / prediction-{output[0][0][4]}, icon: real-{label1[0][0][5]}/ prediction-{output[0][0][5]}",
-            fontsize=15,
+            f"Day1 icon: real-{label1[0][0][4]} / prediction-{output[0][0][4]}, condition: real-{label1[0][0][5]}/ prediction-{output[0][0][5]}",
+            fontsize=12,
         )
         axs[2].text(
             0,
-            1,
-            f"icon: real-{label2[0][0][4]} / prediction-{output[1][0][4]}, icon: real-{label2[0][0][5]}/ prediction-{output[1][0][5]}",
-            fontsize=15,
+            0.1,
+            f"Day1 icon: real-{label2[0][0][4]} / prediction-{output[1][0][4]}, condition: real-{label2[0][0][5]}/ prediction-{output[1][0][5]}",
+            fontsize=12,
         )
         axs[2].text(
             0,
-            2,
-            f"icon: real-{label3[0][0][4]} / prediction-{output[2][0][4]}, icon: real-{label3[0][0][5]}/ prediction-{output[2][0][5]}",
-            fontsize=15,
+            0.2,
+            f"Day1 icon: real-{label3[0][0][4]} / prediction-{output[2][0][4]}, condition: real-{label3[0][0][5]}/ prediction-{output[2][0][5]}",
+            fontsize=12,
         )
         axs[2].text(
             0,
-            3,
-            f"icon: real-{label4[0][0][4]} / prediction-{output[3][0][4]}, icon: real-{label4[0][0][5]}/ prediction-{output[3][0][5]}",
-            fontsize=15,
+            0.3,
+            f"Day1 icon: real-{label4[0][0][4]} / prediction-{output[3][0][4]}, condition: real-{label4[0][0][5]}/ prediction-{output[3][0][5]}",
+            fontsize=12,
         )
         axs[2].text(
             0,
-            4,
-            f"icon: real-{label5[0][0][4]} / prediction-{output[4][0][4]}, icon: real-{label5[0][0][5]}/ prediction-{output[4][0][5]}",
-            fontsize=15,
+            0.4,
+            f"Day1 icon: real-{label5[0][0][4]} / prediction-{output[4][0][4]}, condition: real-{label5[0][0][5]}/ prediction-{output[4][0][5]}",
+            fontsize=12,
         )
         axs[2].text(
             0,
-            5,
-            f"icon: real-{label6[0][0][4]} / prediction-{output[5][0][4]}, icon: real-{label6[0][0][5]}/ prediction-{output[5][0][5]}",
-            fontsize=15,
+            0.5,
+            f"Day1 icon: real-{label6[0][0][4]} / prediction-{output[5][0][4]}, condition: real-{label6[0][0][5]}/ prediction-{output[5][0][5]}",
+            fontsize=12,
         )
         axs[2].text(
             0,
-            6,
-            f"icon: real-{label7[0][0][4]} / prediction-{output[6][0][4]}, icon: real-{label7[0][0][5]}/ prediction-{output[6][0][5]}",
-            fontsize=15,
+            0.6,
+            f"Day1 icon: real-{label7[0][0][4]} / prediction-{output[6][0][4]}, condition: real-{label7[0][0][5]}/ prediction-{output[6][0][5]}",
+            fontsize=12,
         )
 
     if plot_text != "future":
