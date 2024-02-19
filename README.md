@@ -52,8 +52,9 @@ The plots will be saved in the Plots folder.
 
 <br>
 
+## Documentation
 
-**[Documentation: (German)](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E)**
+**[German Documentation](https://drive.google.com/file/d/17Y7CCb8q_BkaXafY_krfXaMJ5eqAW4U2/view?usp=sharing)**
 
 
-**[Documentation: (English)](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E)**
+**[English Documentation](https://drive.google.com/file/d/19pABBdGhXleA2T1tDr-GP1gwyDyeFwrg/view?usp=sharing)**
