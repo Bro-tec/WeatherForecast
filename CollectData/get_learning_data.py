@@ -126,7 +126,6 @@ async def filter_dataComplete(data):
 
 # joining found data for hourly or returning error
 async def joinDataHourly(cityID, cities, lc, date):
-    cities.sort_index(inplace=True)
     data = await dwd.getWeatherByStationIDDate(cityID, date)
     if len(data) < 24:
         return pd.DataFrame(columns=["error"])

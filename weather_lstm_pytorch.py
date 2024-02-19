@@ -43,7 +43,6 @@ class PyTorch_LSTM(nn.Module):
             batch_first=True,
         ).to(device)
         self.fc = nn.Linear(self.hidden_size * 2, outputs).to(device)
-        self.soft = nn.Softmax().to(device)
         self.sig = nn.Sigmoid().to(device)
 
     def forward(self, input, device):
@@ -63,7 +62,7 @@ class PyTorch_LSTM(nn.Module):
         return out
 
 
-# loading model if already saved or creating a new model 
+# loading model if already saved or creating a new model
 def load_own_Model(
     name, device, loading_mode="normal", t=0, input_count=86, learning_rate=0.001
 ):
@@ -293,6 +292,7 @@ def train_LSTM(
                 .float()
                 .sum()
                 / 6
+                * 100
             )
 
         my_acc = torch.FloatTensor(acc_list).to(device)
@@ -334,6 +334,7 @@ def train_LSTM(
                 .float()
                 .sum()
                 / 6
+                * 100
             )
 
         my_val_acc = torch.FloatTensor(val_acc_list).to(device)

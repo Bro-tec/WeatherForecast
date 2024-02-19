@@ -2,6 +2,7 @@ import requests
 import aiohttp
 import asyncio
 import random
+import json
 from datetime import datetime
 
 
@@ -9,7 +10,11 @@ def getSourcesByStationIDDate(i, date):
     Response = requests.get(
         f"https://api.brightsky.dev/weather?dwd_station_id={i}&date={date}"
     )
-    if str(Response.status_code)[0] == "2":  # raises exception when not a 2xx response
+    if str(Response.status_code) == "429":
+        return getSourcesByStationIDDate(i, date)
+    elif (
+        str(Response.status_code)[0] == "2"
+    ):  # raises exception when not a 2xx response
         WeatherData = Response.json()
         if "sources" in WeatherData.keys():
             if len(WeatherData["sources"]) != 0:
@@ -40,16 +45,13 @@ async def getWeatherByStationIDDate(i, date, wait=True, delay=2):
     if wait:
         await asyncio.sleep(random.uniform(0, delay))
     try:
-        # print(f"https://api.brightsky.dev/weather?dwd_station_id={i}&date=2020-04-21")
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"https://api.brightsky.dev/weather?dwd_station_id={i}&date={date}"
             ) as response:
                 await asyncio.sleep(0.2)
-                # print(i, ":", response.status)
+                # if code was too fast it gets error 429 so it just retries witha little delay
                 if str(response.status) == "429":
-                    # print(i, ":", "redoing")
-                    # await asyncio.sleep(random.uniform(2, 4))
                     return await getWeatherByStationIDDate(i, date, delay=15)
                 elif (
                     str(response.status)[0] == "2"
@@ -57,8 +59,6 @@ async def getWeatherByStationIDDate(i, date, wait=True, delay=2):
                     WeatherData = await response.json()
                     if "weather" in WeatherData.keys():
                         if len(WeatherData["weather"]) != 0:
-                            # first_record = datetime.strptime(WeatherData["weather"][0]["first_record"][0:14], '%Y-%m-%dT%H:')
-                            # last_record = datetime.strptime(WeatherData["weather"][0]["last_record"][0:14], '%Y-%m-%dT%H:')
                             return WeatherData["weather"]
                         else:
                             return "error", "error"

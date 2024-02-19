@@ -32,45 +32,46 @@ else:
 for train, label, label24, i in gld.gen_trainDataHourly_Async(skip_days=skip):
     print("\ntraining count", train.shape)
 
-    name = "Hourly"
-    model, optimizer, loss_fn, metric, history = wl.load_own_Model(
-        name, device, loading_mode=mode, t=i
-    )  # 1/(5160*1561*24) ungefair 5e-9
-    model, history = wl.train_LSTM(
-        name,
-        train,
-        label,
-        model,
-        optimizer,
-        loss_fn,
-        metric,
-        history,
-        device,
-        epoch_count=1,
-    )
-    wl.save_own_Model(name, history, model, saving_mode=mode, t=i)
-    wl.plotting_hist(history, metric, name, saving_mode=mode, t=i)
+    if train.shape[0] >= 2:
+        name = "Hourly"
+        model, optimizer, loss_fn, metric, history = wl.load_own_Model(
+            name, device, loading_mode=mode, t=i
+        )  # 1/(5160*1561*24) ungefair 5e-9
+        model, history = wl.train_LSTM(
+            name,
+            train,
+            label,
+            model,
+            optimizer,
+            loss_fn,
+            metric,
+            history,
+            device,
+            epoch_count=1,
+        )
+        wl.save_own_Model(name, history, model, saving_mode=mode, t=i)
+        wl.plotting_hist(history, metric, name, saving_mode=mode, t=i)
 
-    name = "Hourly24"
-    model, optimizer, loss_fn, metric, history = wl.load_own_Model(
-        name, device, loading_mode=mode, t=i
-    )
-    model, history = wl.train_LSTM(
-        name,
-        train,
-        label,
-        model,
-        optimizer,
-        loss_fn,
-        metric,
-        history,
-        device,
-        epoch_count=1,
-    )
-    wl.save_own_Model(name, history, model, saving_mode=mode, t=i)
-    wl.plotting_hist(history, metric, name, saving_mode=mode, t=i)
+        name = "Hourly24"
+        model, optimizer, loss_fn, metric, history = wl.load_own_Model(
+            name, device, loading_mode=mode, t=i
+        )
+        model, history = wl.train_LSTM(
+            name,
+            train,
+            label,
+            model,
+            optimizer,
+            loss_fn,
+            metric,
+            history,
+            device,
+            epoch_count=1,
+        )
+        wl.save_own_Model(name, history, model, saving_mode=mode, t=i)
+        wl.plotting_hist(history, metric, name, saving_mode=mode, t=i)
 
-    times_list.append(dt.now() - start_time)
-    print("actually it took: ", times_list[-1])
-    start_time = dt.now()
-    print("\n\n")
+        times_list.append(dt.now() - start_time)
+        print("actually it took: ", times_list[-1])
+        start_time = dt.now()
+        print("\n\n")
