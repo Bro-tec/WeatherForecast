@@ -25,7 +25,6 @@ The data gets retrieverd using Brightsky Api.
 - torchmetrics
 - requests
 - aiohttp
-- asyncio
 
 <br>
 
@@ -58,3 +57,10 @@ The plots will be saved in the Plots folder.
 
 
 **[English Documentation](https://drive.google.com/file/d/19pABBdGhXleA2T1tDr-GP1gwyDyeFwrg/view?usp=sharing)**
+
+<br>
+
+## Presentation
+
+**[German Presentation](https://drive.google.com/file/d/17Y7CCb8q_BkaXafY_krfXaMJ5eqAW4U2/view?usp=sharing)**
+
