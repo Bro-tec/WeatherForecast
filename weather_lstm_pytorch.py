@@ -55,7 +55,7 @@ class PyTorch_LSTM(nn.Module):
         ).to(device)
         out, (hn, cn) = self.lstm(input, (hidden_state, cell_state))
         # reshaping output to 1d tensor
-        out = out[-1,-1,:]
+        out = out[-1, -1, :]
         out = self.fc(out)
         # sigmoid for the labels
         out[4] = self.sig(out[4])
@@ -63,7 +63,7 @@ class PyTorch_LSTM(nn.Module):
         return out
 
 
-# loading model if already saved or creating a new model lr 0.07 0.001
+# loading model if already saved or creating a new model 
 def load_own_Model(
     name, device, loading_mode="normal", t=0, input_count=86, learning_rate=0.001
 ):
@@ -289,7 +289,7 @@ def train_LSTM(
             # calculating loss and counting accuricy
             loss_list.append(float(loss.item()))
             acc_list.append(
-                (((output >= scaled_label - 0.02) & (output <= scaled_label + 0.02)))
+                (((output >= scaled_label - 0.05) & (output <= scaled_label + 0.05)))
                 .float()
                 .sum()
                 / 6
@@ -330,7 +330,7 @@ def train_LSTM(
             loss = loss_fn(output, scaled_label)
             val_loss_list.append(loss.item())
             val_acc_list.append(
-                (((output >= scaled_label - 0.002) & (output <= scaled_label + 0.002)))
+                (((output >= scaled_label - 0.05) & (output <= scaled_label + 0.05)))
                 .float()
                 .sum()
                 / 6

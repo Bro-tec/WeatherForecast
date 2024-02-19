@@ -460,7 +460,7 @@ async def DataDailyAsync(
 
 
 # main function for daily dataretrival to switch between async and non async
-def gen_trainDataDaily_Async(skip_days=0, redos=2):
+def gen_trainDataDaily_Async(skip_days=0, redos=1):
     cityP = load_stations_csv()
     minTime = dt.strptime(min(cityP["start"]), "%Y-%m-%d %H:%M:%S")
     minTime = minTime + td(days=skip_days)

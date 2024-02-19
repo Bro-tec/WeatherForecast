@@ -176,3 +176,8 @@ for (
     )
     wl.save_own_Model(name, history, model, saving_mode=mode, t=i)
     wl.plotting_hist(history, metric, name, saving_mode=mode, t=i)
+
+    times_list.append(dt.now() - start_time)
+    print("actually it took: ", times_list[-1])
+    start_time = dt.now()
+    print("\n\n")

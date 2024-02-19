@@ -49,3 +49,11 @@ load the data from (https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25yt
 Run the file predictModels,py in the folder WeatherPredicter and chose the preferences of your Model. <br>
 If you saved the Model from the google drive, then you should run the code on normal mode. <br>
 The plots will be saved in the Plots folder.
+
+<br>
+
+
+**[Documentation: (German)](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E)**
+
+
+**[Documentation: (English)](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E)**

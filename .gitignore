@@ -10,3 +10,11 @@ not needed Plots/
 plots for ppp/
 Models/
 __pycache__
+.vscode/settings.json
+test.py
+weather_lstm_keras.py
+CollectData/db_con.py
+CollectData/DBcollecting.py
+CollectData/DBtesting.py
+CollectData/get_Weather_data.py
+CollectData/test.js
