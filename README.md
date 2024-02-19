@@ -65,5 +65,5 @@ The plots will be saved in the Plots folder.
 **[German Presentation](https://docs.google.com/presentation/d/1Tj1JBiOdr7fzXeiFHC5kwvETWVYObkYu/edit#slide=id.p1)**
 
 
-**[German Presentation](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E)** 
+**[German Presentation (PDF)](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E)** 
 
