@@ -72,7 +72,7 @@ def load_own_Model(
         if os.path.exists(f"./Models/{name}_{str(t)}.pth") and os.path.exists(
             f"./Models/{name}_{str(t)}.pth"
         ):
-            model.load_state_dict(torch.load(f"./Models/{name}_{str(t)}.pth"))
+            model.load_state_dict(torch.load(f"./Models/{name}_{str(t)}.pth", map_location=device))
             model.eval()
             with open(f"./Models/{name}_history_{str(t)}.json", "r") as f:
                 history = json.load(f)
@@ -80,7 +80,7 @@ def load_own_Model(
         elif os.path.exists(f"./Models/{name}_{str(t-1)}.pth") and os.path.exists(
             f"./Models/{name}_{str(t-1)}.pth"
         ):
-            model.load_state_dict(torch.load(f"./Models/{name}_{str(t-1)}.pth"))
+            model.load_state_dict(torch.load(f"./Models/{name}_{str(t-1)}.pth", map_location=device))
             model.eval()
             with open(f"./Models/{name}_history_{str(t-1)}.json", "r") as f:
                 history = json.load(f)
@@ -92,7 +92,7 @@ def load_own_Model(
         if os.path.exists(f"./Models/{name}.pth") and os.path.exists(
             f"./Models/{name}.pth"
         ):
-            model.load_state_dict(torch.load(f"./Models/{name}.pth"))
+            model.load_state_dict(torch.load(f"./Models/{name}.pth", map_location=device))
             model.eval()
             with open(f"./Models/{name}_history.json", "r") as f:
                 history = json.load(f)
