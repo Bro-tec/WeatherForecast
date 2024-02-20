@@ -389,7 +389,7 @@ def plotting_Prediction_hourly(
         )
 
     if plot_text != "future":
-        plt.legend(["predicted", "real"], loc="upper left")
+        axs[0].legend(["predicted", "real"], loc="upper left")
     fig.suptitle(f"prediction {plot_text}")
     plt.tight_layout()
     if mode == "timestep" or mode == "ts":
@@ -522,7 +522,7 @@ def plotting_Prediction_Daily(
         )
 
     if plot_text != "future":
-        plt.legend(
+        axs[0].legend(
             ["min predicted", "max predicted", "min real", "max real"], loc="upper left"
         )
     fig.suptitle(f"prediction {plot_text}")
@@ -549,7 +549,7 @@ def predictHourly(date, device, mode="normal", model_num=0, id="", city="", time
     out_list = []
     if date <= dt.now() - td(days=2):
         train, label, label24 = gld.get_predictDataHourly(date, id=id)
-        if type(train) == "str":
+        if isinstance(train, str):
             print("error occured please retry with other ID/Name")
             return
         print("\ntraining count", train.shape)
@@ -574,6 +574,10 @@ def predictHourly(date, device, mode="normal", model_num=0, id="", city="", time
             )
     else:
         train = gld.get_predictDataHourly(date, id=id)
+        if isinstance(train, str):
+            print("error occured please retry with other ID/Name")
+            return
+        print("\ntraining count", train.shape)
         model, optimizer, loss_fn, metric, history = load_own_Model(
             "Hourly", device, loading_mode=mode, t=model_num
         )
@@ -595,7 +599,7 @@ def predictDaily(date, device, mode="normal", model_num=0, id="", city=""):
         train, label1, label2, label3, label4, label5, label6, label7 = (
             gld.get_predictDataDaily(date, id=id)
         )
-        if type(train) == "str":
+        if isinstance(train, str):
             print("error occured please retry with other ID/Name")
             return
         print("\ntraining count", train.shape)
@@ -645,6 +649,10 @@ def predictDaily(date, device, mode="normal", model_num=0, id="", city=""):
             )
     else:
         train = gld.get_predictDataDaily(date, id=id)
+        if isinstance(train, str):
+            print("error occured please retry with other ID/Name")
+            return
+        print("\ntraining count", train.shape)
         model1, optimizer, loss_fn, metric, history = load_own_Model(
             "Daily", device, loading_mode=mode, t=model_num, input_count=7752
         )
