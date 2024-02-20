@@ -31,7 +31,7 @@ The data gets retrieverd using Brightsky Api.
 ## First u need to get the get stations.csv
 Run the file get_DWD_data.py in the folder CollectData 
 #### or 
-load the data from **[Google Drive](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E?usp=sharing)** and save it into the Weatherpredicter folder.
+load the station.csv from **[Google Drive](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E?usp=sharing)** and save it into the Weatherpredicter folder.
 
 <br>
 
@@ -40,7 +40,7 @@ Run the files trainDailyModels.py and trainHourlyModes.py in the folder WeatherP
 You can run the Normal mode but its recomendet to use the Timestamp mode, if the device has enough memory. <br> 
 your models and the model histories will be saved into Models and you can see the confusion matrix for the labels, the loss and the accuracy curve in Plots
 #### or 
-load the data from **[Google Drive](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E?usp=sharing)** and save it into the Models folder.
+load all models and history data from **[Google Drive](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E?usp=sharing)** and save it into the Models folder.
 
 <br>
 
