@@ -31,7 +31,7 @@ The data gets retrieverd using Brightsky Api.
 ## First u need to get the get stations.csv
 Run the file get_DWD_data.py in the folder CollectData 
 #### or 
-load the station.csv from **[Google Drive](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E?usp=sharing)** and save it into the Weatherpredicter folder.
+load the stations.csv from **[Google Drive](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E?usp=sharing)** and save it into the Weatherpredicter folder.
 
 <br>
 
