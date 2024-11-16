@@ -36,7 +36,15 @@ def check_cuda():
 # creating my lstm
 class PyTorch_LSTM(nn.Module):
     def __init__(
-        self, inputs, outputs, device, h_size=30, seq_size=24, layer=3, dropout=0
+        self,
+        inputs,
+        outputs,
+        device,
+        h_size=30,
+        seq_size=24,
+        batchsize=100,
+        layer=3,
+        dropout=0,
     ):
         super(PyTorch_LSTM, self).__init__()
         self.lstm = nn.LSTM(
@@ -44,16 +52,18 @@ class PyTorch_LSTM(nn.Module):
             hidden_size=h_size,
             num_layers=layer,
             dropout=dropout,
-            # batch_first=False,
+            batch_first=True,
         ).to(device)
+        # self.fc2 = nn.Linear(seq_size, 1).to(device)
         self.fc = nn.Linear(h_size, outputs).to(device)
+        self.rel = nn.ReLU()
         self.hidden_state = Variable(
-            torch.Tensor(np.zeros((layer, seq_size, h_size)).tolist())
+            torch.Tensor(np.zeros((layer, batchsize, h_size)).tolist())
             .type(torch.float32)
             .to(device)
         ).to(device)
         self.cell_state = Variable(
-            torch.Tensor(np.zeros((layer, seq_size, h_size)).tolist())
+            torch.Tensor(np.zeros((layer, batchsize, h_size)).tolist())
             .type(torch.float32)
             .to(device)
         ).to(device)
@@ -72,7 +82,8 @@ class PyTorch_LSTM(nn.Module):
             self.hidden_state = hn.detach()
             self.cell_state = cn.detach()
         # print("out", out.shape)
-        l2 = self.fc(out)
+        l = self.fc(out[:, -1, :])
+        l2 = self.rel(l)
         # print("l2", l2.shape)
 
         return l2.type(torch.float64).to(device)
@@ -82,14 +93,14 @@ class PyTorch_LSTM(nn.Module):
 def load_own_Model(
     name,
     device,
-    loading_mode="normal",
-    t=0,
-    input_count=30,
-    output_count=6,
+    input_count=230,
+    output_count=46,
     learning_rate=0.001,
     layer=3,
     hiddensize=7,
+    sequences=24,
     dropout=0.1,
+    batchsize=0,
 ):
     history = {
         "accuracy": [0],
@@ -101,82 +112,49 @@ def load_own_Model(
     }
     model = {"haha": [1, 2, 3]}
 
-    if loading_mode == "timestep" or loading_mode == "ts":
-        if os.path.exists(f"./Models/{name}_{str(t)}.pth") and os.path.exists(
-            f"./Models/{name}_{str(t)}.pth"
-        ):
-            model.load_state_dict(
-                torch.load(f"./Models/{name}_{str(t)}.pth", map_location=device)
-            )
-            with open(f"./Models/{name}_history_{str(t)}.json", "r") as f:
-                history = json.load(f)
-            print("Model found")
-        elif os.path.exists(f"./Models/{name}_{str(t-1)}.pth") and os.path.exists(
-            f"./Models/{name}_{str(t-1)}.pth"
-        ):
-            model.load_state_dict(
-                torch.load(f"./Models/{name}_{str(t-1)}.pth", map_location=device)
-            )
-            with open(f"./Models/{name}_history_{str(t-1)}.json", "r") as f:
-                history = json.load(f)
-            print("Model found")
-        else:
-            print("Data not found or not complete")
-            model = PyTorch_LSTM(
-                input_count,
-                output_count,
-                device,
-                h_size=hiddensize,
-                layer=layer,
-                dropout=dropout,
-            )
-
+    if os.path.exists(f"./Models/{name}.pth") and os.path.exists(
+        f"./Models/{name}.pth"
+    ):
+        checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
+        model = checkpoint["model"]
+        with open(f"./Models/{name}_history.json", "r") as f:
+            history = json.load(f)
+        print("Model found")
     else:
-        if os.path.exists(f"./Models/{name}.pth") and os.path.exists(
-            f"./Models/{name}.pth"
-        ):
-            model.load_state_dict(
-                torch.load(f"./Models/{name}.pth", map_location=device)
-            )
-            model.eval()
-            with open(f"./Models/{name}_history.json", "r") as f:
-                history = json.load(f)
-            print("Model found")
-        else:
-            print("Data not found or not complete")
-            model = PyTorch_LSTM(
-                input_count,
-                output_count,
-                device,
-                h_size=hiddensize,
-                layer=layer,
-                dropout=dropout,
-            )
+        print("Data not found or not complete")
+        model = PyTorch_LSTM(
+            input_count,
+            output_count,
+            device,
+            h_size=hiddensize,
+            seq_size=sequences,
+            layer=layer,
+            dropout=dropout,
+            batchsize=batchsize,
+        )
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    if os.path.exists(f"./Models/{name}.pth"):
+        checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
+        optimizer.load_state_dict(checkpoint["optimizer"])
     model.train()
-    loss_fn = nn.CrossEntropyLoss().to(device)
     # metric = MulticlassConfusionMatrix(num_classes=21).to(device)
-    return model, optimizer, loss_fn, history
+    return model, optimizer, history
 
 
 # saving model if saving_mode set to ts or timestamp it will use the number for the model to save it.
 # ts helps to choose saved model data before the model started to overfit or not work anymore
-def save_own_Model(name, history, model, saving_mode="normal", t=0):
-    if saving_mode == "timestep" or saving_mode == "ts":
-        history["hidden_state"], history["cell_state"] = model.save_hiddens()
-        with open(f"./Models/{name}_history_{str(t)}.json", "w") as fp:
-            json.dump(history, fp)
-        torch.save(model.state_dict(), f"./Models/{name}_{str(t)}.pth")
-        print("Saved model")
-    else:
-        with open(f"./Models/{name}_history.json", "w") as fp:
-            json.dump(history, fp)
-        torch.save(model, f"./Models/{name}.pth")
-        print("Saved model")
+def save_own_Model(name, history, model, optimizer):
+    with open(f"./Models/{name}_history.json", "w") as fp:
+        json.dump(history, fp)
+    torch.save(
+        {"model": model, "optimizer": optimizer.state_dict()},
+        f"./Models/{name}.pth",
+    )
+    print("Saved model")
 
 
 # plotting Evaluation via Accuracy, Loss and MulticlassConfusionMatrix
-def plotting_hist(history, metric, name, saving_mode="normal", t=0):
+def plotting_hist(history, metrics, name):
     icons = [
         None,
         "clear-day",
@@ -201,8 +179,6 @@ def plotting_hist(history, metric, name, saving_mode="normal", t=0):
         "reserved",
     ]
     name_tag = f"{name}_plot"
-    if saving_mode == "timestep" or saving_mode == "ts":
-        name_tag = f"{name}_plot_{t}"
     # summarize history for accuracy
     plt.plot(history["accuracy"])
     plt.plot(history["val_accuracy"])
@@ -223,37 +199,48 @@ def plotting_hist(history, metric, name, saving_mode="normal", t=0):
     plt.close()
 
     # summarize MulticlassConfusionMatrix
-    fig, ax = metric.plot()
-    ax.set_xlabel("Predicted labels")
-    ax.set_ylabel("True labels")
-    fig.set_figwidth(16)
-    fig.set_figheight(16)
+    fig, ax = plt.subplots(
+        2,
+        2,
+        figsize=(4, 7),
+        sharey="row",
+    )
     plt.title("Confusion Matrix")
-    ax.xaxis.set_ticklabels(icons)
-    ax.yaxis.set_ticklabels(icons)
+    metric_names = ["Train Icon", "Test Icon", "Train Condition", "Test Condition"]
+    for i, metric in enumerate(metrics):
+        j = math.floor(i / 2)
+        k = i % 2
+        ax[j, k].title.set_text(metric_names[i])
+        metric.plot(
+            ax=ax[j, k],
+            # cmap="Blues",
+            # colorbar=False,
+        )
+        ax[j, k].xaxis.set_ticklabels(icons)
+        ax[j, k].yaxis.set_ticklabels(icons)
+    fig.set_figwidth(10)
+    fig.set_figheight(10)
     plt.savefig(f"./Plots/{name_tag}_matrix.png")
     plt.close()
 
 
 # unscaling the output because it usually doesnt get over 1
 def unscale_output(output):
-    output[:, :, 0] *= 100
-    output[:, :, 1] *= 360
-    output[:, :, 2] *= 100
-    output[:, :, 3] *= 10000
-    output[:, :, 4] *= 21
-    output[:, :, 5] *= 21
+    output[:, 0] *= 100
+    output[:, 1] *= 360
+    output[:, 2] *= 100
+    output[:, 3] *= 10000
     return output
 
 
 # scaling label to check if output was good enough
 def scale_label(output):
-    output[:, :, 0] /= 100
-    output[:, :, 1] /= 360
-    output[:, :, 2] /= 100
-    output[:, :, 3] /= 10000
-    output[:, :, 4] /= 21
-    output[:, :, 5] /= 21
+    output[:, 0] /= 100
+    output[:, 1] /= 360
+    output[:, 2] /= 100
+    output[:, 3] /= 10000
+    # output[:, :, 4] /= 21
+    # output[:, :, 5] /= 21
     return output
 
 
@@ -263,8 +250,8 @@ def scale_features(output):
         output[:, :, 1 + i * 5] /= 360
         output[:, :, 2 + i * 5] /= 100
         output[:, :, 3 + i * 5] /= 10000
-        output[:, :, 4 + i * 5] /= 21
-        output[:, :, 5 + i * 5] /= 21
+        # output[:, :, 4 + i * 5] /= 21
+        # output[:, :, 5 + i * 5] /= 21
     return output
 
 
@@ -280,15 +267,18 @@ def train_LSTM(
     label,
     model,
     optimizer,
-    loss_fn,
     history,
     device,
     epoch_count=1,
     epoch=0,
     batchsize=0,
 ):
+    CEloss_fn = nn.CrossEntropyLoss().to(device)
+    BCEWL1loss_fn = nn.BCEWithLogitsLoss().to(device)
+    BCEWL2loss_fn = nn.BCEWithLogitsLoss().to(device)
     if batchsize == 0:
         batchsize == len(feature)
+
     X_train, X_test, y_train, y_test = train_test_split(
         feature, label, test_size=0.02, random_state=42
     )
@@ -297,38 +287,24 @@ def train_LSTM(
     y_train_tensors = Variable(torch.Tensor(y_train)).to(device)
     y_test_tensors = Variable(torch.Tensor(y_test)).to(device)
 
-    print("X_train_tensors", X_train_tensors.shape)
-    print("y_train_tensors", y_train_tensors.shape)
-    print("X_test_tensors", X_test_tensors.shape)
-    print("y_test_tensors", y_test_tensors.shape)
-    # X_train_tensors = torch.reshape(
-    #     X_train_tensors, (X_train_tensors.shape[0], 1, X_train_tensors.shape[1])
-    # ).to(device)
-    # X_test_tensors = torch.reshape(
-    #     X_test_tensors, (X_test_tensors.shape[0], 1, X_test_tensors.shape[1])
-    # ).to(device)
-
-    # if len(y_train_tensors.shape) >= 3:
-    #     y_train_tensors = torch.reshape(
-    #         y_train_tensors, (y_train_tensors.shape[0], y_train_tensors.shape[-1])
-    #     ).to(device)
-    #     y_test_tensors = torch.reshape(
-    #         y_test_tensors, (y_test_tensors.shape[0], y_test_tensors.shape[-1])
-    #     ).to(device)
+    # print("X_train_tensors", X_train_tensors.shape)
+    # print("y_train_tensors", y_train_tensors.shape)
+    # print("X_test_tensors", X_test_tensors.shape)
+    # print("y_test_tensors", y_test_tensors.shape)
 
     X_train_tensors = scale_features(X_train_tensors)
     y_train_tensors = scale_label(y_train_tensors)
     X_test_tensors = scale_features(X_test_tensors)
     y_test_tensors = scale_label(y_test_tensors)
-    metrics = [MulticlassConfusionMatrix(num_classes=3).to(device) for i in range(4)]
+    metrics = [MulticlassConfusionMatrix(num_classes=21).to(device) for i in range(4)]
 
     predicted = []
     acc_list = []
     loss_list = []
-    labels = Variable(torch.Tensor(np.array(y_train[:, 0].tolist())).to(device)).to(
+    labels = Variable(torch.Tensor(np.array(y_train.tolist())).to(device)).to(
         device
     )  # .flatten()
-    val_labels = Variable(torch.Tensor(np.array(y_test[:, 0].tolist())).to(device)).to(
+    val_labels = Variable(torch.Tensor(np.array(y_test.tolist())).to(device)).to(
         device
     )  # .flatten()
     val_loss_list = []
@@ -343,29 +319,33 @@ def train_LSTM(
         model.train()
         output = 0
         scaled_batch = 0
-        print("batches", batches)
+        # print("batches", batches)
 
         if batches >= math.ceil(X_train_tensors.shape[0] / batchsize) - 1:
             # print("runs")
             output = model.forward(
-                X_train_tensors[batches * batchsize :],
-                device,
+                X_train_tensors[batches * batchsize :], device, hiddens=False
             )
             scaled_batch = y_train_tensors[batches * batchsize :].detach().clone()
+            train_label = labels[batches * batchsize :]
         else:
             output = model.forward(
                 X_train_tensors[batches * batchsize : (batches + 1) * batchsize],
                 device,
+                hiddens=False,
             )
             scaled_batch = (
                 y_train_tensors[batches * batchsize : (batches + 1) * batchsize]
                 .detach()
                 .clone()
             )
+            train_label = labels[batches * batchsize : (batches + 1) * batchsize]
 
         torch_outputs = output.detach().clone()
-        print("output", output.shape, "\nscaled_batch", scaled_batch.shape)
-        loss = loss_fn(output, scaled_batch)
+        # print("output", output.shape, "\nscaled_batch", scaled_batch.shape)
+        loss = CEloss_fn(output[:, :4], scaled_batch[:, :4])
+        loss += BCEWL1loss_fn(output[:, 4:25], scaled_batch[:, 4:25])
+        loss += BCEWL2loss_fn(output[:, 25:46], scaled_batch[:, 25:46])
         # calculates the loss of the loss function
         loss.backward()
         # improve from loss, this is the actual backpropergation
@@ -375,30 +355,22 @@ def train_LSTM(
 
         loss_list.append(float(loss.item()))
 
-        compare = (
-            torch_outputs.detach().clone()
-            # torch.reshape(torch_outputs.detach().clone(), (torch_outputs.shape[0], 3))
-            - scaled_batch.detach().clone()
-        )
+        compare = torch_outputs.detach().clone() - scaled_batch.detach().clone()
         compare[compare < 0] *= -1
         acc_list.append(
             100
             - (
                 (compare).float().sum()
                 * 100
-                / (
-                    scaled_batch.shape[0]
-                    * scaled_batch.shape[-1]
-                    * scaled_batch.shape[-2]
-                )
+                / (scaled_batch.shape[0] * scaled_batch.shape[-2])
             )
             # / (layer * outs)
         )
         # inplementig data into MulticlassConfusionMatrix
         metric_output = unscale_output(output)
-        print("metric", metric_output[-2].shape, labels[-2].shape)
-        metrics[0].update(metric_output[-2], labels[-2])
-        metrics[1].update(metric_output[-1], labels[-1])
+        metrics[0].update(metric_output[:, -42:-21], train_label[:, -42:-21])
+        # print("metric", metric_output[:, -21:], label[:, -21:])
+        metrics[1].update(metric_output[:, -21:], train_label[:, -21:])
         # label need to be scaled and zero labels need to get a value
         # scaled_label = scale_label(label)
 
@@ -425,46 +397,37 @@ def train_LSTM(
 
     # testing trained model on unused values
     model.eval()
-    val_labels = np.array(y_test[:, 0].tolist())
     for batches in tqdm(range(math.ceil(X_test_tensors.shape[0] / batchsize))):
         output = 0
         scaled_batch = 0
-        val_labels_batch = 0
         with torch.no_grad():
             if batches >= math.ceil(X_test_tensors.shape[0] / batchsize) - 1:
                 # print("runs")
                 output = model.forward(
-                    X_test_tensors[batches * batchsize :],
-                    device,
+                    X_test_tensors[batches * batchsize :], device, hiddens=False
                 )
                 scaled_batch = y_test_tensors[batches * batchsize :]
+                test_label = val_labels[batches * batchsize :]
             else:
                 output = model.forward(
                     X_test_tensors[batches * batchsize : (batches + 1) * batchsize],
                     device,
+                    hiddens=False,
                 )
                 scaled_batch = y_test_tensors[
                     batches * batchsize : (batches + 1) * batchsize
                 ]
+                test_label = val_labels[batches * batchsize : (batches + 1) * batchsize]
 
             val_torch_outputs = output.detach().clone()
             # del output, input
 
             # loss
-            val_loss = loss_fn(
-                # torch.max(val_torch_outputs.squeeze(-1), dim=1).indices.type(torch.float64),
-                output,
-                # torch.max(scaled_batch.detach().clone(), dim=1).indices.type(torch.float64),
-                scaled_batch,
-            )
+            val_loss = CEloss_fn(output[:, :4], scaled_batch[:, :4])
+            val_loss = BCEWL1loss_fn(output[:, 4:25], scaled_batch[:, 4:25])
+            val_loss = BCEWL2loss_fn(output[:, 25:46], scaled_batch[:, 25:46])
             val_loss_list.append(float(val_loss.item()))
-        compare = (
-            torch.reshape(
-                val_torch_outputs.detach().clone(),
-                (scaled_batch.shape[0], 3),
-            )
-            - scaled_batch.detach().clone()
-        )
+        compare = val_torch_outputs.detach().clone() - scaled_batch.detach().clone()
         # compare = val_torch_outputs[1:] - scaled_val_label
         compare[compare < 0] *= -1
         val_acc_list.append(
@@ -473,16 +436,14 @@ def train_LSTM(
                 (compare).float().sum()
                 * 100
                 # / (layer * outs)
-                / (
-                    scaled_batch.shape[0]
-                    * scaled_batch.shape[-2]
-                    * scaled_batch.shape[-1]
-                )
+                / (scaled_batch.shape[0] * scaled_batch.shape[-1])
             )
         )
-        metric_output = unscale_output(output, name)
-        metrics[2].update(metric_output[-2], val_labels[-2])
-        metrics[3].update(metric_output[-1], val_labels[-1])
+        metric_output = unscale_output(output)
+        # print("metric", metric_output[:, 4:25].shape, test_label[:, 4:25].shape)
+        # print("metric", metric_output[:, -21:].shape, test_label[:, -21:].shape)
+        metrics[2].update(metric_output[:, -42:-21], test_label[:, -42:-21])
+        metrics[3].update(metric_output[:, -21:], test_label[:, -21:])
 
     my_val_acc = torch.FloatTensor(val_acc_list).to(device)
     # setting nan values to 0 to calculate the mean
@@ -511,7 +472,7 @@ def train_LSTM(
         )
     )
 
-    return model, history, metrics
+    return model, history, metrics, optimizer
 
 
 # plotting predicted data only for hourly named models
@@ -666,20 +627,6 @@ def predictDaily(date, device, mode="normal", model_num=0, id="", city=""):
             out_list.append(prediction(model5, train, "Daily", device))
             out_list.append(prediction(model6, train, "Daily", device))
             out_list.append(prediction(model7, train, "Daily", device))
-            plotting_Prediction_Daily(
-                train,
-                out_list,
-                "test",
-                label1=label1,
-                label2=label2,
-                label3=label3,
-                label4=label4,
-                label5=label5,
-                label6=label6,
-                label7=label7,
-                mode=mode,
-                t=model_num,
-            )
     else:
         train = gld.get_predictDataDaily(date, id=id)
         if isinstance(train, str):
@@ -715,4 +662,3 @@ def predictDaily(date, device, mode="normal", model_num=0, id="", city=""):
             out_list.append(prediction(model5, train, "Daily", device))
             out_list.append(prediction(model6, train, "Daily", device))
             out_list.append(prediction(model7, train, "Daily", device))
-            plotting_Prediction_Daily(train, out_list, "future", mode=mode, t=model_num)
