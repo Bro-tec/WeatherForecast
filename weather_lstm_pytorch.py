@@ -104,22 +104,17 @@ def load_own_Model(
 ):
     history = {
         "accuracy": [0],
-        "loss": [0.5],
+        "loss": [0],
         "val_accuracy": [0],
-        "val_loss": [0.5],
+        "val_loss": [0],
         # "argmax_accuracy": [0],
         # "val_argmax_accuracy": [0],
     }
     model = {"haha": [1, 2, 3]}
 
-    if os.path.exists(f"./Models/{name}.pth") and os.path.exists(
-        f"./Models/{name}.pth"
-    ):
+    if os.path.exists(f"./Models/{name}.pth"):
         checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
         model = checkpoint["model"]
-        with open(f"./Models/{name}_history.json", "r") as f:
-            history = json.load(f)
-        print("Model found")
     else:
         print("Data not found or not complete")
         model = PyTorch_LSTM(
@@ -132,6 +127,10 @@ def load_own_Model(
             dropout=dropout,
             batchsize=batchsize,
         )
+    if os.path.exists(f"./Models/{name}_history.json"):
+        with open(f"./Models/{name}_history.json", "r") as f:
+            history = json.load(f)
+        print("Model found")
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     if os.path.exists(f"./Models/{name}.pth"):
         checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
@@ -153,8 +152,16 @@ def save_own_Model(name, history, model, optimizer):
     print("Saved model")
 
 
+def approximation(all):
+    x = np.arange(0, len(all))
+    y = list(all)
+    [b, m] = np.polynomial.polynomial.polyfit(x, y, 1)
+    # print("b: ", b, ", m: ", m)
+    return b, m
+
+
 # plotting Evaluation via Accuracy, Loss and MulticlassConfusionMatrix
-def plotting_hist(history, metrics, name):
+def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
     icons = [
         None,
         "clear-day",
@@ -180,21 +187,91 @@ def plotting_hist(history, metrics, name):
     ]
     name_tag = f"{name}_plot"
     # summarize history for accuracy
-    plt.plot(history["accuracy"])
-    plt.plot(history["val_accuracy"])
+    fig, ax = plt.subplots(4, figsize=(20, 5), sharey="row")
     plt.title("model accuracy")
     plt.ylabel("accuracy")
     plt.xlabel("epoch")
+    plt.title("model accuracy")
+    ax[0].plot(history["accuracy"][1:])
+    ax[0].plot(history["val_accuracy"][1:])
+    if len(history["accuracy"]) > 150:
+        ax[1].plot(history["accuracy"][-150:], alpha=0.6)
+        ax[1].plot(history["val_accuracy"][-150:], alpha=0.6)
+    if len(history["accuracy"]) > min_amount:
+        ax[2].plot(history["accuracy"][(-1 * min_amount) :])
+        ax[3].plot(history["val_accuracy"][(-1 * min_amount) :])
+    ax[0].grid(axis="y")
+    ax[1].grid(axis="y")
+    ax[2].grid(axis="y")
+    ax[3].grid(axis="y")
+    ax[0].legend(
+        [
+            "train",
+            "test",
+        ],
+        # ["svm train", "svm test", "rf train", "rf test"],
+        loc="upper left",
+    )
+    ax[1].legend(
+        [
+            "train",
+            "test",
+        ],
+        loc="upper left",
+    )
     plt.legend(["train", "test"], loc="upper left")
     plt.savefig(f"./Plots/{name_tag}_accuracy.png")
     plt.close()
+
     # summarize history for loss
-    plt.plot(history["loss"])
-    plt.plot(history["val_loss"])
+    plt.plot(history["loss"][1:])
+    plt.plot(history["val_loss"][1:])
     plt.title("model loss")
     plt.ylabel("loss")
     plt.xlabel("epoch")
-    plt.legend(["train", "test"], loc="upper left")
+
+    history["loss"] = (pd.Series(history["loss"]) * 1000).tolist()
+    history["val_loss"] = (pd.Series(history["val_loss"]) * 1000).tolist()
+    history["loss"] = [_ if _ < 10 and _ > 0 else 10 for _ in history["loss"]]
+    history["val_loss"] = [_ if _ < 10 and _ > 0 else 10 for _ in history["val_loss"]]
+
+    b, m = approximation(history["loss"])
+    f = [b + (m * x) for x in range(len(history["loss"]))]
+    b2, m2 = approximation(history["loss"][-150:])
+    f2 = [b2 + (m2 * x) for x in range(150)]
+    # summarize history for loss
+    fig, ax = plt.subplots(4, figsize=(20, 5), sharey="row")
+
+    ax[0].plot(history["loss"], alpha=0.8)
+    ax[0].plot(history["val_loss"], alpha=0.75)
+    ax[0].plot(f)
+    ax[0].grid(axis="y")
+    ax[0].legend(
+        [
+            "train / Epoche:" + str(epoche + 1),
+            "test",
+            # "linear train: {:.1f} + {:.5f}x".format(b * 10, m),
+            "linear train: {:.5f}x".format(m),
+        ],
+        loc="upper left",
+    )
+    ax[1].plot(history["loss"][-150:], alpha=0.8)
+    ax[1].plot(history["val_loss"][-150:], alpha=0.75)
+    ax[1].plot(f2)
+    ax[1].grid(axis="y")
+    ax[1].legend(
+        [
+            "train",
+            "test",
+            # "linear train: {:.1f} + {:.5f}x".format(b2 * 10, m2),
+            "linear train: {:.5f}x".format(m2),
+        ],
+        loc="upper left",
+    )
+    ax[2].plot(history["loss"][(-1 * min_amount) :])
+    ax[2].grid(axis="y")
+    ax[3].plot(history["val_loss"][(-1 * min_amount) :])
+    ax[3].grid(axis="y")
     plt.savefig(f"./Plots/{name_tag}_loss.png")
     plt.close()
 
@@ -218,8 +295,8 @@ def plotting_hist(history, metrics, name):
         )
         ax[j, k].xaxis.set_ticklabels(icons)
         ax[j, k].yaxis.set_ticklabels(icons)
-    fig.set_figwidth(10)
-    fig.set_figheight(10)
+    fig.set_figwidth(16)
+    fig.set_figheight(16)
     plt.savefig(f"./Plots/{name_tag}_matrix.png")
     plt.close()
 
@@ -355,17 +432,16 @@ def train_LSTM(
 
         loss_list.append(float(loss.item()))
 
-        compare = torch_outputs.detach().clone() - scaled_batch.detach().clone()
+        compare = torch_outputs[:4].detach().clone() - scaled_batch[:4].detach().clone()
         compare[compare < 0] *= -1
-        acc_list.append(
-            100
-            - (
-                (compare).float().sum()
-                * 100
-                / (scaled_batch.shape[0] * scaled_batch.shape[-2])
-            )
-            # / (layer * outs)
-        )
+        acc_list.append(100 / ((compare).float().sum() / (compare.shape[0] * 4)))
+        _, inds_o_icon = torch.max(torch_outputs[:, 4:25].detach().clone(), dim=1)
+        _, inds_s_icon = torch.max(scaled_batch[:, 4:25].detach().clone(), dim=1)
+        _, inds_o_condition = torch.max(torch_outputs[:, 25:46].detach().clone(), dim=1)
+        _, inds_s_condition = torch.max(scaled_batch[:, 25:46].detach().clone(), dim=1)
+        acc_list.append((inds_o_icon == inds_s_icon).sum().item() * 100)
+        acc_list.append((inds_o_condition == inds_s_condition).sum().item() * 100)
+        # print(acc_list[-3:])
         # inplementig data into MulticlassConfusionMatrix
         metric_output = unscale_output(output)
         metrics[0].update(metric_output[:, -42:-21], train_label[:, -42:-21])
@@ -389,11 +465,11 @@ def train_LSTM(
         history["accuracy"].append(float(my_acc))
     else:
         history["accuracy"].append(history["accuracy"][-1])
-        print(
-            "Epoch {}/{}, Loss: {:.5f}, Accuracy: {:.5f}".format(
-                epoch + 1, epoch_count, my_loss, my_acc
-            )
+    print(
+        "\nEpoch {}/{}, Loss: {:.5f}, Accuracy: {:.5f} \n".format(
+            epoch, epoch_count, my_loss, my_acc
         )
+    )
 
     # testing trained model on unused values
     model.eval()
@@ -427,18 +503,21 @@ def train_LSTM(
             val_loss = BCEWL1loss_fn(output[:, 4:25], scaled_batch[:, 4:25])
             val_loss = BCEWL2loss_fn(output[:, 25:46], scaled_batch[:, 25:46])
             val_loss_list.append(float(val_loss.item()))
-        compare = val_torch_outputs.detach().clone() - scaled_batch.detach().clone()
+        compare = (
+            val_torch_outputs[:4].detach().clone() - scaled_batch[:4].detach().clone()
+        )
         # compare = val_torch_outputs[1:] - scaled_val_label
         compare[compare < 0] *= -1
-        val_acc_list.append(
-            100
-            - (
-                (compare).float().sum()
-                * 100
-                # / (layer * outs)
-                / (scaled_batch.shape[0] * scaled_batch.shape[-1])
-            )
+        val_acc_list.append(100 / ((compare).float().sum() / (compare.shape[0] * 4)))
+        _, inds_o_icon = torch.max(val_torch_outputs[:, 4:25].detach().clone(), dim=1)
+        _, inds_s_icon = torch.max(scaled_batch[:, 4:25].detach().clone(), dim=1)
+        _, inds_o_condition = torch.max(
+            val_torch_outputs[:, 25:46].detach().clone(), dim=1
         )
+        _, inds_s_condition = torch.max(scaled_batch[:, 25:46].detach().clone(), dim=1)
+        val_acc_list.append((inds_o_icon == inds_s_icon).sum().item() * 100)
+        val_acc_list.append((inds_o_condition == inds_s_condition).sum().item() * 100)
+        # print(val_acc_list[-3:])
         metric_output = unscale_output(output)
         # print("metric", metric_output[:, 4:25].shape, test_label[:, 4:25].shape)
         # print("metric", metric_output[:, -21:].shape, test_label[:, -21:].shape)
@@ -577,88 +656,3 @@ def predictHourly(date, device, mode="normal", model_num=0, id="", city="", time
             plotting_Prediction_hourly(
                 train[time], out_list, "future", mode=mode, t=model_num
             )
-
-
-# prediction main code specially for daily models
-def predictDaily(date, device, mode="normal", model_num=0, id="", city=""):
-    out_list = []
-    if date <= dt.now() - td(days=2):
-        (
-            train,
-            label1,
-            label2,
-            label3,
-            label4,
-            label5,
-            label6,
-            label7,
-        ) = gld.get_predictDataDaily(date, id=id)
-        if isinstance(train, str):
-            print("error occured please retry with other ID/Name")
-            return
-        print("\ntraining count", train.shape)
-
-        model1, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        model2, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        model3, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        model4, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        model5, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        model6, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        model7, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        if not id == "" or city == "":
-            out_list.append(prediction(model1, train, "Daily", device))
-            out_list.append(prediction(model2, train, "Daily", device))
-            out_list.append(prediction(model3, train, "Daily", device))
-            out_list.append(prediction(model4, train, "Daily", device))
-            out_list.append(prediction(model5, train, "Daily", device))
-            out_list.append(prediction(model6, train, "Daily", device))
-            out_list.append(prediction(model7, train, "Daily", device))
-    else:
-        train = gld.get_predictDataDaily(date, id=id)
-        if isinstance(train, str):
-            print("error occured please retry with other ID/Name")
-            return
-        print("\ntraining count", train.shape)
-        model1, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        model2, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        model3, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        model4, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        model5, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        model6, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        model7, optimizer, loss_fn, metric, history = load_own_Model(
-            "Daily", device, loading_mode=mode, t=model_num, input_count=7752
-        )
-        if not id == "" or city == "":
-            out_list.append(prediction(model1, train, "Daily", device))
-            out_list.append(prediction(model2, train, "Daily", device))
-            out_list.append(prediction(model3, train, "Daily", device))
-            out_list.append(prediction(model4, train, "Daily", device))
-            out_list.append(prediction(model5, train, "Daily", device))
-            out_list.append(prediction(model6, train, "Daily", device))
-            out_list.append(prediction(model7, train, "Daily", device))
