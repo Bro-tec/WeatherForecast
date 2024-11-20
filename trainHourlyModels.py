@@ -8,13 +8,29 @@ times_list = []
 
 device = wl.check_cuda()
 
-name = "Hourly"
-skip = 15
+name = "full_feature"
+# skip = 161 # Hourly
+# skip = 518  # Multibatch
+skip = 0  # full_feature
+month = True
+hours = True
+position = True
 
-batchsize = 1
+inputs = 230
+outputs = 46
+if month:
+    inputs += 1
+if hours:
+    inputs += 1
+if position:
+    inputs += 3
+
+batchsize = 100
 epoches = 1
 repeat = 6
 dropout = 0.2
+learning_rate = 0.001
+layers = 3
 
 hiddens = 30
 sequences = 12
@@ -43,14 +59,24 @@ hours_per_city = 24
 model, optimizer, history = wl.load_own_Model(
     name,
     device,
+    input_count=inputs,
+    output_count=outputs,
     dropout=dropout,
     hiddensize=hiddens,
     sequences=sequences,
     batchsize=batchsize,
+    learning_rate=learning_rate,
+    layer=layers,
 )
 
 for train, label, i, r in gld.gen_trainDataHourly_Async(
-    skip_days=skip, seq=sequences, max_batch=hours_per_city, redos=repeat
+    skip_days=skip,
+    seq=sequences,
+    max_batch=hours_per_city,
+    redos=repeat,
+    month=month,
+    hours=hours,
+    position=position,
 ):
     print("\ntraining count: ", train.shape)
     print("\nlabel count: ", label.shape)

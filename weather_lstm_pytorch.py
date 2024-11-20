@@ -11,7 +11,8 @@ import pickle
 
 # from sklearn import preprocessing as pr
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+
+# from sklearn.metrics import accuracy_score
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -75,6 +76,26 @@ class PyTorch_LSTM(nn.Module):
             "\ncell_state:\n",
             self.cell_state.tolist(),
         )
+
+    def set_hiddens(self, batchsize, device):
+        self.hidden_state = Variable(
+            torch.Tensor(
+                np.zeros(
+                    (self.hidden_state.shape[0], batchsize, self.hidden_state.shape[-1])
+                ).tolist()
+            )
+            .type(torch.float32)
+            .to(device)
+        ).to(device)
+        self.cell_state = Variable(
+            torch.Tensor(
+                np.zeros(
+                    (self.cell_state.shape[0], batchsize, self.cell_state.shape[-1])
+                ).tolist()
+            )
+            .type(torch.float32)
+            .to(device)
+        ).to(device)
 
     def forward(self, input, device, hiddens=True):
         out, (hn, cn) = self.lstm(input, (self.hidden_state, self.cell_state))
@@ -224,16 +245,14 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
     plt.close()
 
     # summarize history for loss
-    plt.plot(history["loss"][1:])
-    plt.plot(history["val_loss"][1:])
     plt.title("model loss")
     plt.ylabel("loss")
     plt.xlabel("epoch")
 
-    history["loss"] = (pd.Series(history["loss"]) * 1000).tolist()
-    history["val_loss"] = (pd.Series(history["val_loss"]) * 1000).tolist()
-    history["loss"] = [_ if _ < 10 and _ > 0 else 10 for _ in history["loss"]]
-    history["val_loss"] = [_ if _ < 10 and _ > 0 else 10 for _ in history["val_loss"]]
+    history["loss"] = (pd.Series(history["loss"])).tolist()
+    history["val_loss"] = (pd.Series(history["val_loss"])).tolist()
+    # history["loss"] = [_ if _ < 10 and _ > 0 else 10 for _ in history["loss"]]
+    # history["val_loss"] = [_ if _ < 10 and _ > 0 else 10 for _ in history["val_loss"]]
 
     b, m = approximation(history["loss"])
     f = [b + (m * x) for x in range(len(history["loss"]))]
@@ -399,6 +418,7 @@ def train_LSTM(
         # print("batches", batches)
 
         if batches >= math.ceil(X_train_tensors.shape[0] / batchsize) - 1:
+            model.set_hiddens(X_train_tensors[batches * batchsize :].shape[0], device)
             # print("runs")
             output = model.forward(
                 X_train_tensors[batches * batchsize :], device, hiddens=False
@@ -406,6 +426,7 @@ def train_LSTM(
             scaled_batch = y_train_tensors[batches * batchsize :].detach().clone()
             train_label = labels[batches * batchsize :]
         else:
+            model.set_hiddens(batchsize, device)
             output = model.forward(
                 X_train_tensors[batches * batchsize : (batches + 1) * batchsize],
                 device,
@@ -432,15 +453,19 @@ def train_LSTM(
 
         loss_list.append(float(loss.item()))
 
-        compare = torch_outputs[:4].detach().clone() - scaled_batch[:4].detach().clone()
+        size = torch_outputs.shape[0]
+
+        compare = torch_outputs[:, :4] - scaled_batch[:, :4]
         compare[compare < 0] *= -1
-        acc_list.append(100 / ((compare).float().sum() / (compare.shape[0] * 4)))
-        _, inds_o_icon = torch.max(torch_outputs[:, 4:25].detach().clone(), dim=1)
-        _, inds_s_icon = torch.max(scaled_batch[:, 4:25].detach().clone(), dim=1)
-        _, inds_o_condition = torch.max(torch_outputs[:, 25:46].detach().clone(), dim=1)
-        _, inds_s_condition = torch.max(scaled_batch[:, 25:46].detach().clone(), dim=1)
-        acc_list.append((inds_o_icon == inds_s_icon).sum().item() * 100)
-        acc_list.append((inds_o_condition == inds_s_condition).sum().item() * 100)
+        acc_list.append(100 / (1 + ((compare).float().sum() / (size * 4))))
+        _, inds_o_icon = torch.max(torch_outputs[:, 4:25], dim=1)
+        _, inds_s_icon = torch.max(scaled_batch[:, 4:25], dim=1)
+        _, inds_o_condition = torch.max(torch_outputs[:, 25:46], dim=1)
+        _, inds_s_condition = torch.max(scaled_batch[:, 25:46], dim=1)
+        acc_list.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
+        acc_list.append(
+            (inds_o_condition == inds_s_condition).sum().item() / size * 100
+        )
         # print(acc_list[-3:])
         # inplementig data into MulticlassConfusionMatrix
         metric_output = unscale_output(output)
@@ -478,6 +503,9 @@ def train_LSTM(
         scaled_batch = 0
         with torch.no_grad():
             if batches >= math.ceil(X_test_tensors.shape[0] / batchsize) - 1:
+                model.set_hiddens(
+                    X_test_tensors[batches * batchsize :].shape[0], device
+                )
                 # print("runs")
                 output = model.forward(
                     X_test_tensors[batches * batchsize :], device, hiddens=False
@@ -485,6 +513,7 @@ def train_LSTM(
                 scaled_batch = y_test_tensors[batches * batchsize :]
                 test_label = val_labels[batches * batchsize :]
             else:
+                model.set_hiddens(batchsize, device)
                 output = model.forward(
                     X_test_tensors[batches * batchsize : (batches + 1) * batchsize],
                     device,
@@ -503,20 +532,20 @@ def train_LSTM(
             val_loss = BCEWL1loss_fn(output[:, 4:25], scaled_batch[:, 4:25])
             val_loss = BCEWL2loss_fn(output[:, 25:46], scaled_batch[:, 25:46])
             val_loss_list.append(float(val_loss.item()))
-        compare = (
-            val_torch_outputs[:4].detach().clone() - scaled_batch[:4].detach().clone()
-        )
+
+        size = val_torch_outputs.shape[0]
+        compare = val_torch_outputs[:, :4] - scaled_batch[:, :4]
         # compare = val_torch_outputs[1:] - scaled_val_label
         compare[compare < 0] *= -1
-        val_acc_list.append(100 / ((compare).float().sum() / (compare.shape[0] * 4)))
-        _, inds_o_icon = torch.max(val_torch_outputs[:, 4:25].detach().clone(), dim=1)
-        _, inds_s_icon = torch.max(scaled_batch[:, 4:25].detach().clone(), dim=1)
-        _, inds_o_condition = torch.max(
-            val_torch_outputs[:, 25:46].detach().clone(), dim=1
+        val_acc_list.append(100 / (1 + ((compare).float().sum() / (size * 4))))
+        _, inds_o_icon = torch.max(val_torch_outputs[:, 4:25], dim=1)
+        _, inds_s_icon = torch.max(scaled_batch[:, 4:25], dim=1)
+        _, inds_o_condition = torch.max(val_torch_outputs[:, 25:46], dim=1)
+        _, inds_s_condition = torch.max(scaled_batch[:, 25:46], dim=1)
+        val_acc_list.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
+        val_acc_list.append(
+            (inds_o_condition == inds_s_condition).sum().item() / size * 100
         )
-        _, inds_s_condition = torch.max(scaled_batch[:, 25:46].detach().clone(), dim=1)
-        val_acc_list.append((inds_o_icon == inds_s_icon).sum().item() * 100)
-        val_acc_list.append((inds_o_condition == inds_s_condition).sum().item() * 100)
         # print(val_acc_list[-3:])
         metric_output = unscale_output(output)
         # print("metric", metric_output[:, 4:25].shape, test_label[:, 4:25].shape)

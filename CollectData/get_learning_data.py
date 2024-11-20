@@ -7,9 +7,12 @@ import numpy as np  # euclidean: 34:03 each epoche
 from progress.bar import Bar
 import math
 import random
+from tqdm import tqdm
 import warnings
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
+
+continous_data = {}
 
 # list of label values
 icons = [
@@ -107,22 +110,22 @@ async def getCities(cityP, cityID, distance):
 # filter special for hourly named dataloader
 async def filter_dataHourly(data, feature_labels):
     data.drop(["source_id"], axis=1, inplace=True)
-    data["icon"] = [float(icons.index(data["icon"][i])) for i in range(len(data))]
-    data["condition"] = [
-        float(icons.index(data["condition"][i])) for i in range(len(data))
-    ]
+    for j in range(len(icons)):
+        data["icon" + str(j)] = [
+            1 if icons.index(data["icon"][i]) == j else 0 for i in range(len(data))
+        ]
+        data["condition" + str(j)] = [
+            1 if icons.index(data["condition"][i]) == j else 0 for i in range(len(data))
+        ]
+    # data["icon"] = [float(icons.index(data["icon"][i])) for i in range(len(data))]
+    # data["condition"] = [
+    #     float(icons.index(data["condition"][i])) for i in range(len(data))
+    # ]
     if "fallback_source_ids" in data:
         data.drop(["fallback_source_ids"], axis=1, inplace=True)
     # data["timestamp"] = [int(str(data.iloc[i, 0])[11:13]) for i in range(data.shape[0])]
     # data.drop(["timestamp"], axis=1, inplace=True)
     data = data[feature_labels]
-    return data
-
-
-# filter special for daily named dataloader, uses filter_dataHourly because the needs overlap
-async def filter_dataComplete(data):
-    data = await filter_dataHourly(data)
-    data.fillna(0, inplace=True)
     return data
 
 
@@ -153,159 +156,99 @@ async def joinDataHourly(cityID, cities, lc, date, feature_labels):
     return data.round(3)
 
 
-# joining found data for daily or returning error
-async def joinDataComplete(cityID, cities, lc, date):
-    data = await dwd.getWeatherByStationIDDate(cityID, date, delay=5)
-    if len(data) <= 24:
-        return pd.DataFrame(columns=["error"])
-    data = pd.DataFrame(data)
-    data = data[:24]
-    for j in range(cities.shape[1]):
-        i = 0
-        lcount = lc
-        while i - lc < lcount:
-            newdata = await dwd.getWeatherByStationIDDate(
-                cities.iloc[i, j], date, wait=False
-            )
-            i += 1
-            if len(newdata) <= 24:
-                if i - lc >= 12:
-                    return pd.DataFrame(columns=["error"])
-                lcount += 1
-                continue
-            newdata = newdata[:24]
-            data = pd.concat([data, pd.DataFrame(newdata)], ignore_index=True)
-    return await filter_dataComplete(data)
-
-
-# returns label for daily
-async def labelMinMax(cityID, date):
-    data = await dwd.getWeatherByStationIDDate(cityID, date)
-    if data[0] == "error":
-        return pd.DataFrame(columns=["error"])
-    label_Data = pd.DataFrame(data)
-    label_Data = await filter_dataComplete(label_Data)
-    conditions = label_Data["condition"].value_counts().index[0]
-    icons = label_Data["icon"].value_counts().index[0]
-    return pd.DataFrame(
-        {
-            "temperature_min": [min(label_Data["temperature"])],
-            "temperature_max": max(label_Data["temperature"]),
-            "wind_speed_min": min(label_Data["wind_speed"]),
-            "wind_speed_max": max(label_Data["wind_speed"]),
-            "condition": conditions,
-            "icon": icons,
-        }
-    )
-
-
-# returns label for hourly
-async def label24(cityID, date):
-    data = await dwd.getWeatherByStationIDDate(cityID, date)
-    if data[0] == "error":
-        return pd.DataFrame(columns=["error"])
-    label_Data = pd.DataFrame(data)
-    label_Data = await filter_dataComplete(label_Data)
-    return label_Data[
-        [
-            "temperature",
-            "wind_direction",
-            "wind_speed",
-            "visibility",
-            "condition",
-            "icon",
-        ]
-    ]
-
-
 # gathered async function to get hourly inputs and labels
 async def get_DataHourlyAsync(
     row,
     cityP,
     date,
-    get_mode="normal",
-    ts=False,
+    distance="near",
+    feature_labels=[],
+    month=False,
+    hours=False,
+    position=False,
+):
+    cities = await getCities(cityP, row.ID, distance)
+    train_Data = await joinDataHourly(row.ID, cities, 4, date.date(), feature_labels)
+    if "error" in train_Data or len(train_Data) < 25:
+        hourly_bar.next()
+        return pd.DataFrame(columns=["error"]), row.ID
+    if hours:
+        train_Data["hours"] = [i for i in range(len(train_Data))]
+    if month:
+        train_Data["month"] = [int(date.month) for i in range(len(train_Data))]
+    if position:
+        train_Data["lon"] = [row.lon for i in range(len(train_Data))]
+        train_Data["lat"] = [row.lat for i in range(len(train_Data))]
+        train_Data["height"] = [row.height for i in range(len(train_Data))]
+    if len(train_Data) > 24:
+        train_Data = train_Data[:24]
+    hourly_bar.next()
+    return (train_Data.to_numpy(), row.ID)
+
+
+# main async function to get hourly inputs and labels, to use parallelized dataretrival which makes the code faster
+async def DataHourlyAsync(
+    cityloop,
+    cityP,
+    date,
+    r_mode=False,
+    minTime=0,
+    duration=0,
+    continous_hour_range=24,
+    label_hour_range=12,
     feature_labels=[
         "temperature",
         "wind_direction",
         "wind_speed",
         "visibility",
-        "condition",
-        "icon",
+        "icon0",
+        "icon1",
+        "icon2",
+        "icon3",
+        "icon4",
+        "icon5",
+        "icon6",
+        "icon7",
+        "icon8",
+        "icon9",
+        "icon10",
+        "icon11",
+        "icon12",
+        "icon13",
+        "icon14",
+        "icon15",
+        "icon16",
+        "icon17",
+        "icon18",
+        "icon19",
+        "icon20",
+        "condition0",
+        "condition1",
+        "condition2",
+        "condition3",
+        "condition4",
+        "condition5",
+        "condition6",
+        "condition7",
+        "condition8",
+        "condition9",
+        "condition10",
+        "condition11",
+        "condition12",
+        "condition13",
+        "condition14",
+        "condition15",
+        "condition16",
+        "condition17",
+        "condition18",
+        "condition19",
+        "condition20",
     ],
-    distance="near",
+    month=False,
+    hours=False,
+    position=False,
 ):
-    cityID = row.ID
-    cities = await getCities(cityP, cityID, distance)
-    train_Data = await joinDataHourly(cityID, cities, 4, date.date(), feature_labels)
-    if "error" in train_Data or len(train_Data) < 25:
-        hourly_bar.next()
-        return pd.DataFrame(columns=["error"])
-    if ts:
-        train_Data["t"] = [i for i in range(len(train_Data))]
-    if get_mode != "normal":
-        return train_Data[:-1].to_numpy()
-    if len(train_Data) > 25:
-        train_Data = train_Data[:25]
-    date = date + td(days=1)
-    # label_Data24 = await label24(cityID, date)
-    # if "error" in label_Data24 or len(label_Data24) < 24:
-    #     hourly_bar.next()
-    #     return pd.DataFrame(columns=["error"])
-    # if len(label_Data24) > 24:
-    #     label_Data24 = label_Data24[:24]
-    # label_Data = train_Data[[3, 4, 5, 9, 12, 16]]
-    # label_Data = train_Data[feature_labels]
-    label_Data = train_Data[[i for i in range(len(feature_labels))]]
-    hourly_bar.next()
-    return (
-        train_Data[:-1].to_numpy(),
-        label_Data.iloc[1:].to_numpy(),
-        # label_Data24.to_numpy(),
-    )
-
-
-# gathered async function to get daily inputs and labels
-async def get_DataDailyAsync(row, cityP, date, get_mode="normal"):
-    cityID = row.ID
-    cities = await getCities(cityP, cityID, "far")
-    train_Data = await joinDataComplete(cityID, cities, 1, date.date())
-    if "error" in train_Data:
-        daily_bar.next()
-        return pd.DataFrame(columns=["error"])
-    if get_mode != "normal":
-        return train_Data[:-1].to_numpy()
-    date = date + td(days=1)
-    label_Data_Daily1 = await labelMinMax(cityID, date)
-    date = date + td(days=1)
-    label_Data_Daily2 = await labelMinMax(cityID, date)
-    date = date + td(days=1)
-    label_Data_Daily3 = await labelMinMax(cityID, date)
-    date = date + td(days=1)
-    label_Data_Daily4 = await labelMinMax(cityID, date)
-    date = date + td(days=1)
-    label_Data_Daily5 = await labelMinMax(cityID, date)
-    date = date + td(days=1)
-    label_Data_Daily6 = await labelMinMax(cityID, date)
-    date = date + td(days=1)
-    label_Data_Daily7 = await labelMinMax(cityID, date)
-    daily_bar.next()
-    return [
-        train_Data,
-        label_Data_Daily1,
-        label_Data_Daily2,
-        label_Data_Daily3,
-        label_Data_Daily4,
-        label_Data_Daily5,
-        label_Data_Daily6,
-        label_Data_Daily7,
-    ]
-
-
-# main async function to get hourly inputs and labels, to use parallelized dataretrival which makes the code faster
-async def DataHourlyAsync(
-    cityloop, cityP, date, get_mode="normal", r_mode=False, minTime=0, duration=0
-):
+    global continous_data
     global hourly_bar
     hourly_bar = Bar("Processing", max=len(cityloop))
     lists = []
@@ -316,7 +259,10 @@ async def DataHourlyAsync(
                     row,
                     cityP,
                     minTime + td(days=random.randint(0, duration - 3)),
-                    get_mode=get_mode,
+                    feature_labels=feature_labels,
+                    month=month,
+                    hours=hours,
+                    position=position,
                 )
                 for row in cityloop.itertuples(index=False)
             ]
@@ -324,169 +270,60 @@ async def DataHourlyAsync(
     else:
         lists = await asyncio.gather(
             *[
-                get_DataHourlyAsync(row, cityP, date, get_mode=get_mode)
-                for row in cityloop.itertuples(index=False)
-            ]
-        )
-    print("lists: ", len(lists))
-    if get_mode == "normal":
-        train_np = np.zeros(shape=(1, 1))
-        label_np = np.zeros(shape=(1, 1))
-        # label24_np = np.zeros(shape=(1, 1))
-        i = 0
-        for l in lists:
-            print("l[0]: ", l[0].shape)
-            print("l[1]: ", l[1].shape)
-            # print("l[2]: ", l[2].shape)
-            if len(l) > 0:
-                if len(l[0]) > 0 and len(l[1]) > 0:  # and len(l[2]):
-                    if i == 0:
-                        train_np = np.array([l[0]])
-                        label_np = np.array([l[1]])
-                        # label24_np = np.array([l[2]])
-                        i += 1
-                    else:
-                        train_np = np.concatenate([train_np, np.array([l[0]])], axis=0)
-                        label_np = np.concatenate([label_np, np.array([l[1]])], axis=0)
-                        # label24_np = np.concatenate(
-                        #     [label24_np, np.array([l[2]])], axis=1
-                        # )
-        print("train_np", train_np.shape)
-        print("label_np", label_np.shape)
-        if train_np.shape[1] == 1:
-            return "error", "error", "error"
-        return (
-            train_np,  # .reshape(-1, train_np.shape[2]),
-            label_np,  # .reshape(-1, label_np.shape[2]),
-            # label24_np.reshape(-1, label24_np.shape[2]),
-        )
-    else:
-        train_np = np.zeros(shape=(1, 1))
-        i = 0
-        for l in lists:
-            if len(l) > 0:
-                if i == 0:
-                    train_np = np.array([l[0]])
-                    i += 1
-                else:
-                    train_np = np.concatenate([train_np, np.array([l[0]])], axis=1)
-        if train_np.shape[1] == 1:
-            return "error", "error", "error"
-        return train_np
-
-
-# main async function to get daily inputs and labels, to use parallelized dataretrival which makes the code faster
-async def DataDailyAsync(
-    cityloop, cityP, date, get_mode="normal", r_mode=False, minTime=0, duration=0
-):
-    global daily_bar
-    daily_bar = Bar("Processing", max=len(cityloop))
-    lists = []
-    if r_mode:
-        lists = await asyncio.gather(
-            *[
-                get_DataDailyAsync(
+                get_DataHourlyAsync(
                     row,
                     cityP,
-                    minTime + td(days=random.randint(0, duration - 3)),
-                    get_mode=get_mode,
+                    date,
+                    feature_labels=feature_labels,
+                    month=month,
+                    hours=hours,
+                    position=position,
                 )
                 for row in cityloop.itertuples(index=False)
             ]
         )
-    else:
-        lists = await asyncio.gather(
-            *[
-                get_DataDailyAsync(row, cityP, date, get_mode=get_mode)
-                for row in cityloop.itertuples(index=False)
-            ]
-        )
-    if get_mode == "normal":
-        train_np = np.zeros(shape=(1, 456, 17))
-        label_np1 = np.zeros(shape=(1, 6))
-        label_np2 = np.zeros(shape=(1, 6))
-        label_np3 = np.zeros(shape=(1, 6))
-        label_np4 = np.zeros(shape=(1, 6))
-        label_np5 = np.zeros(shape=(1, 6))
-        label_np6 = np.zeros(shape=(1, 6))
-        label_np7 = np.zeros(shape=(1, 6))
-        i = 0
-        for l in lists:
-            if len(l) > 0:
-                if (
-                    len(l[0]) > 0
-                    and len(l[1]) > 0
-                    and len(l[2]) > 0
-                    and len(l[3]) > 0
-                    and len(l[4]) > 0
-                    and len(l[5]) > 0
-                    and len(l[6]) > 0
-                    and len(l[7]) > 0
-                ):
-                    if i == 0:
-                        train_np = np.array([l[0]])
-                        label_np1 = np.array([l[1]])
-                        label_np2 = np.array([l[2]])
-                        label_np3 = np.array([l[3]])
-                        label_np4 = np.array([l[4]])
-                        label_np5 = np.array([l[5]])
-                        label_np6 = np.array([l[6]])
-                        label_np7 = np.array([l[7]])
-                        i += 1
-                    else:
-                        train_np = np.concatenate([train_np, np.array([l[0]])], axis=0)
-                        label_np1 = np.concatenate(
-                            [label_np1, np.array([l[1]])], axis=0
-                        )
-                        label_np2 = np.concatenate(
-                            [label_np2, np.array([l[2]])], axis=0
-                        )
-                        label_np3 = np.concatenate(
-                            [label_np3, np.array([l[3]])], axis=0
-                        )
-                        label_np4 = np.concatenate(
-                            [label_np4, np.array([l[4]])], axis=0
-                        )
-                        label_np5 = np.concatenate(
-                            [label_np5, np.array([l[5]])], axis=0
-                        )
-                        label_np6 = np.concatenate(
-                            [label_np6, np.array([l[6]])], axis=0
-                        )
-                        label_np7 = np.concatenate(
-                            [label_np7, np.array([l[7]])], axis=0
-                        )
-        if train_np.shape[1] == 1:
-            return "error", "error", "error"
-        return (
-            train_np.reshape(train_np.shape[0], -1),
-            label_np1,
-            label_np2,
-            label_np3,
-            label_np4,
-            label_np5,
-            label_np6,
-            label_np7,
-        )
-    else:
-        train_np = np.zeros(shape=(1, 456, 17))
-        i = 0
-        for l in lists:
-            if len(l) > 0:
-                if i == 0:
-                    train_np = np.array([l[0]])
-                    i += 1
+
+    for l in tqdm(lists, total=len(lists)):
+        # print("l[0]: ", l[0].shape)
+        if len(l) > 0:
+            if len(l[0]) > 0:  # and len(l[2]):
+                # print(str(l[1]) in continous_data)
+                if not str(l[1]) in continous_data:
+                    continous_data[str(l[1])] = np.array(l[0])
                 else:
-                    train_np = np.concatenate([train_np, np.array([l[0]])], axis=0)
-        if train_np.shape[1] == 1:
-            return "error", "error", "error"
-        return train_np.reshape(train_np.shape[0], -1)
+                    continous_data[str(l[1])] = np.concatenate(
+                        [continous_data[str(l[1])], np.array(l[0])], axis=0
+                    )
+                    if continous_data[str(l[1])].shape[0] > continous_hour_range:
+                        continous_data[str(l[1])] = continous_data[str(l[1])][
+                            continous_data[str(l[1])].shape[0] - continous_hour_range :
+                        ]
+    train_list = []
+    label_list = []
+
+    # Iterate through the keys of the continuous data dictionary
+    for k in tqdm(continous_data.keys(), total=len(continous_data.keys())):
+        if continous_data[k].shape[0] == continous_hour_range:
+            for j in range(continous_hour_range - label_hour_range - 1):
+                train_list.append(continous_data[k][j : j + label_hour_range])
+                label_list.append(
+                    continous_data[k][j + label_hour_range + 1][
+                        [i for i in range(len(feature_labels))]
+                    ]
+                )
+
+    # Convert lists to numpy arrays in a single step
+    train_np = np.array(train_list)
+    label_np = np.array(label_list)
+    return train_np, label_np
 
 
 # main function for hourly dataretrival to switch between async and non async
-def gen_trainDataHourly_Async(skip_days=0, redos=1):
+def gen_trainDataHourly_Async(
+    skip_days=0, redos=1, seq=12, max_batch=24, month=False, hours=False, position=False
+):
     cityP = load_stations_csv()
-    cityP = cityP[:10]
+    cityP = cityP  # [:10]  # for testing only
     minTime = dt.strptime(min(cityP["start"]), "%Y-%m-%d %H:%M:%S")
     minTime = minTime + td(days=skip_days)
     actualTime = dt.now()
@@ -498,11 +335,30 @@ def gen_trainDataHourly_Async(skip_days=0, redos=1):
         for i in range(redos):
             x, y = [], []
             if i == redos - 1:
-                x, y = asyncio.run(DataHourlyAsync(cityP[s * i :], cityP, date))
+                x, y = asyncio.run(
+                    DataHourlyAsync(
+                        cityP[s * i :],
+                        cityP,
+                        date,
+                        continous_hour_range=max_batch,
+                        label_hour_range=seq,
+                        month=month,
+                        hours=hours,
+                        position=position,
+                    )
+                )
                 # x,y,z = asyncio.run(DataHourlyAsync(cityP[s*i:], cityP, date, r_mode=True, minTime=minTime, duration=duration.days))
             else:
                 x, y = asyncio.run(
-                    DataHourlyAsync(cityP[s * i : s * (i + 1)], cityP, date)
+                    DataHourlyAsync(
+                        cityP[s * i : s * (i + 1)],
+                        cityP,
+                        date,
+                        continous_hour_range=max_batch,
+                        month=month,
+                        hours=hours,
+                        position=position,
+                    )
                 )
                 # x,y,z = asyncio.run(DataHourlyAsync(cityP[s*i:s*(i+1)], cityP, date, r_mode=True, minTime=minTime, duration=duration.days))
             # print(x.shape)
@@ -511,7 +367,7 @@ def gen_trainDataHourly_Async(skip_days=0, redos=1):
             # if x == "error":
             #     print("was error so code continued")
             #     continue
-            yield x, y, (d + skip_days)
+            yield x, y, (d + skip_days), (i + 1)
 
 
 # hourly data retreval for predictions
@@ -528,7 +384,7 @@ def get_predictDataHourly(date, city="", id=""):
     if date <= dt.now() - td(days=3):
         return asyncio.run(DataHourlyAsync(cityP, cities, date))
     else:
-        return asyncio.run(DataHourlyAsync(cityP, cities, date, get_mode="input"))
+        return asyncio.run(DataHourlyAsync(cityP, cities, date))
 
 
 async def getWeatherByStationIDDate(stid, dates):
