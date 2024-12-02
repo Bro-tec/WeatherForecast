@@ -57,7 +57,6 @@ class PyTorch_LSTM(nn.Module):
         ).to(device)
         # self.fc2 = nn.Linear(seq_size, 1).to(device)
         self.fc = nn.Linear(h_size, outputs).to(device)
-        self.rel = nn.ReLU()
         self.hidden_state = Variable(
             torch.Tensor(np.zeros((layer, batchsize, h_size)).tolist())
             .type(torch.float32)
@@ -104,10 +103,9 @@ class PyTorch_LSTM(nn.Module):
             self.cell_state = cn.detach()
         # print("out", out.shape)
         l = self.fc(out[:, -1, :])
-        l2 = self.rel(l)
         # print("l2", l2.shape)
 
-        return l2.type(torch.float64).to(device)
+        return l.type(torch.float64).to(device)
 
 
 # loading model if already saved or creating a new model
@@ -206,6 +204,17 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
         "not dry",
         "reserved",
     ]
+    directions = [
+        "up",
+        "right_up",
+        "right",
+        "right_down",
+        "down",
+        "down_left",
+        "left",
+        "left_up",
+        "None",
+    ]
     name_tag = f"{name}_plot"
     # summarize history for accuracy
     fig, ax = plt.subplots(4, figsize=(20, 5), sharey="row")
@@ -296,18 +305,41 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
 
     # summarize MulticlassConfusionMatrix
     fig, ax = plt.subplots(
+        3,
         2,
-        2,
-        figsize=(8, 14),
+        figsize=(8, 16),
         sharey="row",
     )
     plt.title("Confusion Matrix")
-    metric_names = ["Train Icon", "Test Icon", "Train Condition", "Test Condition"]
-    for i, metric in enumerate(metrics):
+    metric_names = [
+        "Train direction",
+        "Test Icon",
+        "Train Icon",
+        "Test Icon",
+        "Train Condition",
+        "Test Condition",
+    ]
+    ax[0, 0].title.set_text(metric_names[0])
+    metrics[0].plot(
+        ax=ax[0, 0],
+        # cmap="Blues",
+        # colorbar=False,
+    )
+    ax[0, 0].xaxis.set_ticklabels(directions)
+    ax[0, 0].yaxis.set_ticklabels(directions)
+    ax[0, 1].title.set_text(metric_names[1])
+    metrics[1].plot(
+        ax=ax[0, 1],
+        # cmap="Blues",
+        # colorbar=False,
+    )
+    ax[0, 1].xaxis.set_ticklabels(directions)
+    ax[0, 1].yaxis.set_ticklabels(directions)
+    for i in range(2, len(metrics)):
         j = math.floor(i / 2)
         k = i % 2
         ax[j, k].title.set_text(metric_names[i])
-        metric.plot(
+        metrics[i].plot(
             ax=ax[j, k],
             # cmap="Blues",
             # colorbar=False,
@@ -323,18 +355,16 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
 # unscaling the output because it usually doesnt get over 1
 def unscale_output(output):
     output[:, 0] *= 100
-    output[:, 1] *= 360
-    output[:, 2] *= 100
-    output[:, 3] *= 10000
+    output[:, 1] *= 100
+    output[:, 2] *= 10000
     return output
 
 
 # scaling label to check if output was good enough
 def scale_label(output):
     output[:, 0] /= 100
-    output[:, 1] /= 360
-    output[:, 2] /= 100
-    output[:, 3] /= 10000
+    output[:, 1] /= 100
+    output[:, 2] /= 10000
     # output[:, :, 4] /= 21
     # output[:, :, 5] /= 21
     return output
@@ -343,9 +373,8 @@ def scale_label(output):
 def scale_features(output):
     for i in range(5):
         output[:, :, i * 5] /= 100
-        output[:, :, 1 + i * 5] /= 360
-        output[:, :, 2 + i * 5] /= 100
-        output[:, :, 3 + i * 5] /= 10000
+        output[:, :, 1 + i * 5] /= 100
+        output[:, :, 2 + i * 5] /= 10000
         # output[:, :, 4 + i * 5] /= 21
         # output[:, :, 5 + i * 5] /= 21
     return output
@@ -369,9 +398,10 @@ def train_LSTM(
     epoch=0,
     batchsize=0,
 ):
-    CEloss_fn = nn.CrossEntropyLoss().to(device)
-    BCEWL1loss_fn = nn.BCEWithLogitsLoss().to(device)
-    BCEWL2loss_fn = nn.BCEWithLogitsLoss().to(device)
+    MSEloss_fn = nn.MSELoss().to(device)
+    CE1loss_fn = nn.CrossEntropyLoss().to(device)
+    CE2loss_fn = nn.CrossEntropyLoss().to(device)
+    CE3loss_fn = nn.CrossEntropyLoss().to(device)
     if batchsize == 0:
         batchsize == len(feature)
 
@@ -392,7 +422,9 @@ def train_LSTM(
     y_train_tensors = scale_label(y_train_tensors)
     X_test_tensors = scale_features(X_test_tensors)
     y_test_tensors = scale_label(y_test_tensors)
-    metrics = [MulticlassConfusionMatrix(num_classes=21).to(device) for i in range(4)]
+    metrics = [
+        MulticlassConfusionMatrix(num_classes=9).to(device) for i in range(2)
+    ] + [MulticlassConfusionMatrix(num_classes=21).to(device) for i in range(4)]
 
     acc_list = []
     loss_list = []
@@ -436,9 +468,14 @@ def train_LSTM(
 
         torch_outputs = output.detach().clone()
         # print("output", output.shape, "\nscaled_batch", scaled_batch.shape)
-        loss = CEloss_fn(output[:, :4], scaled_batch[:, :4])
-        loss += BCEWL1loss_fn(output[:, 4:25], scaled_batch[:, 4:25])
-        loss += BCEWL2loss_fn(output[:, 25:46], scaled_batch[:, 25:46])
+        loss = MSEloss_fn(output[:, :3], scaled_batch[:, :3].double())
+        loss += CE1loss_fn(output[:, 3:12], torch.max(scaled_batch[:, 3:12], dim=1)[1])
+        loss += CE2loss_fn(
+            output[:, 12:33], torch.max(scaled_batch[:, 12:33], dim=1)[1]
+        )
+        loss += CE3loss_fn(
+            output[:, 33:54], torch.max(scaled_batch[:, 33:54], dim=1)[1]
+        )
         # calculates the loss of the loss function
         loss.backward()
         # improve from loss, this is the actual backpropergation
@@ -453,22 +490,31 @@ def train_LSTM(
         compare = torch_outputs[:, :4] - scaled_batch[:, :4]
         compare[compare < 0] *= -1
         acc_list.append(100 / (1 + ((compare).float().sum() / (size * 4))))
-        _, inds_o_icon = torch.max(torch_outputs[:, 4:25], dim=1)
-        _, inds_s_icon = torch.max(scaled_batch[:, 4:25], dim=1)
-        _, inds_o_condition = torch.max(torch_outputs[:, 25:46], dim=1)
-        _, inds_s_condition = torch.max(scaled_batch[:, 25:46], dim=1)
+        _, inds_o_direction = torch.max(torch_outputs[:, 3:12], dim=1)
+        _, inds_s_direction = torch.max(scaled_batch[:, 3:12], dim=1)
+        _, inds_o_icon = torch.max(torch_outputs[:, 12:33], dim=1)
+        _, inds_s_icon = torch.max(scaled_batch[:, 12:33], dim=1)
+        _, inds_o_condition = torch.max(torch_outputs[:, 33:54], dim=1)
+        _, inds_s_condition = torch.max(scaled_batch[:, 33:54], dim=1)
+        acc_list.append(
+            (inds_o_direction == inds_s_direction).sum().item() / size * 100
+        )
         acc_list.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
         acc_list.append(
             (inds_o_condition == inds_s_condition).sum().item() / size * 100
         )
 
         metrics[0].update(
-            torch.argmax(torch_outputs[:, 4:25], dim=1),
-            torch.argmax(scaled_batch[:, 4:25], dim=1),
+            torch.argmax(torch_outputs[:, 3:12], dim=1),
+            torch.argmax(scaled_batch[:, 3:12], dim=1),
         )
-        metrics[1].update(
-            torch.argmax(torch_outputs[:, 25:46], dim=1),
-            torch.argmax(scaled_batch[:, 25:46], dim=1),
+        metrics[2].update(
+            torch.argmax(torch_outputs[:, 12:33], dim=1),
+            torch.argmax(scaled_batch[:, 12:33], dim=1),
+        )
+        metrics[3].update(
+            torch.argmax(torch_outputs[:, 33:54], dim=1),
+            torch.argmax(scaled_batch[:, 33:54], dim=1),
         )
 
     my_acc = torch.FloatTensor(acc_list).to(device)
@@ -488,7 +534,7 @@ def train_LSTM(
         history["accuracy"].append(history["accuracy"][-1])
     print(
         "\nEpoch {}/{}, Loss: {:.5f}, Accuracy: {:.5f} \n".format(
-            epoch, epoch_count, my_loss, my_acc
+            epoch + 1, epoch_count, my_loss, my_acc
         )
     )
 
@@ -524,9 +570,16 @@ def train_LSTM(
             # del output, input
 
             # loss
-            val_loss = CEloss_fn(output[:, :4], scaled_batch[:, :4])
-            val_loss = BCEWL1loss_fn(output[:, 4:25], scaled_batch[:, 4:25])
-            val_loss = BCEWL2loss_fn(output[:, 25:46], scaled_batch[:, 25:46])
+            val_loss = MSEloss_fn(output[:, :3], scaled_batch[:, :3].double())
+            val_loss += CE1loss_fn(
+                output[:, 3:12], torch.max(scaled_batch[:, 3:12], dim=1)[1]
+            )
+            val_loss += CE2loss_fn(
+                output[:, 12:33], torch.max(scaled_batch[:, 12:33], dim=1)[1]
+            )
+            val_loss += CE3loss_fn(
+                output[:, 33:54], torch.max(scaled_batch[:, 33:54], dim=1)[1]
+            )
             val_loss_list.append(float(val_loss.item()))
 
         size = val_torch_outputs.shape[0]
@@ -534,10 +587,15 @@ def train_LSTM(
         # compare = val_torch_outputs[1:] - scaled_val_label
         compare[compare < 0] *= -1
         val_acc_list.append(100 / (1 + ((compare).float().sum() / (size * 4))))
-        _, inds_o_icon = torch.max(val_torch_outputs[:, 4:25], dim=1)
-        _, inds_s_icon = torch.max(scaled_batch[:, 4:25], dim=1)
-        _, inds_o_condition = torch.max(val_torch_outputs[:, 25:46], dim=1)
-        _, inds_s_condition = torch.max(scaled_batch[:, 25:46], dim=1)
+        _, inds_o_direction = torch.max(val_torch_outputs[:, 3:12], dim=1)
+        _, inds_s_direction = torch.max(scaled_batch[:, 3:12], dim=1)
+        _, inds_o_icon = torch.max(val_torch_outputs[:, 12:33], dim=1)
+        _, inds_s_icon = torch.max(scaled_batch[:, 12:33], dim=1)
+        _, inds_o_condition = torch.max(val_torch_outputs[:, 33:54], dim=1)
+        _, inds_s_condition = torch.max(scaled_batch[:, 33:54], dim=1)
+        val_acc_list.append(
+            (inds_o_direction == inds_s_direction).sum().item() / size * 100
+        )
         val_acc_list.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
         val_acc_list.append(
             (inds_o_condition == inds_s_condition).sum().item() / size * 100
@@ -546,13 +604,17 @@ def train_LSTM(
         # metric_output = unscale_output(output)
         # print("metric", metric_output[:, 4:25].shape, test_label[:, 4:25].shape)
         # print("metric", metric_output[:, -21:].shape, test_label[:, -21:].shape)
-        metrics[2].update(
-            torch.argmax(output[:, -42:-21], dim=1),
-            torch.argmax(scaled_batch[:, -42:-21], dim=1),
+        metrics[1].update(
+            torch.argmax(output[:, 3:12], dim=1),
+            torch.argmax(scaled_batch[:, 3:12], dim=1),
         )
-        metrics[3].update(
-            torch.argmax(output[:, -21:], dim=1),
-            torch.argmax(scaled_batch[:, -21:], dim=1),
+        metrics[4].update(
+            torch.argmax(output[:, 12:33], dim=1),
+            torch.argmax(scaled_batch[:, 12:33], dim=1),
+        )
+        metrics[5].update(
+            torch.argmax(output[:, 33:54], dim=1),
+            torch.argmax(scaled_batch[:, 33:54], dim=1),
         )
 
     my_val_acc = torch.FloatTensor(val_acc_list).to(device)

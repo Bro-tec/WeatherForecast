@@ -16,8 +16,8 @@ month = True
 hours = True
 position = True
 
-inputs = 230
-outputs = 46
+inputs = 265
+outputs = 54
 if month:
     inputs += 1
 if hours:
@@ -30,7 +30,7 @@ epoches = 100
 repeat = 1
 dropout = 0.1
 learning_rates = [0.0001, 0.001, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1]
-layers = 5
+layers = 3
 
 hiddens = 1
 sequences = 12
@@ -51,18 +51,20 @@ for train, label, i, r in gld.gen_trainDataHourly_Async(
     print("\n Days count: ", i, ", repeated ", repeat, "\\", r, "\n")
     for batchsize in batchsizes:
         for learning_rate in learning_rates:
+            # if batchsize == 10000 and learning_rate == 0.0001:
+            #     continue
             for l in range(1, layers):
-                for i in range(1, inputs):
+                for i in range(1, round(inputs / 3)):
                     name = (
                         n
-                        + "_e"
-                        + str(i)
-                        + "_l"
-                        + str(l)
-                        + "_lr"
-                        + str(learning_rate)
                         + "_b"
                         + str(batchsize)
+                        + "_lr"
+                        + str(learning_rate)
+                        + "_l"
+                        + str(l)
+                        + "_h"
+                        + str(i)
                     )
                     print(name)
                     model, optimizer, history = wl.load_own_Model(
@@ -93,9 +95,13 @@ for train, label, i, r in gld.gen_trainDataHourly_Async(
                                 batchsize=batchsize,
                             )
                             wl.save_own_Model(name, history, model, optimizer)
-                            wl.plotting_hist(history, metrics, name, 10, epoche=epoch)
+                            wl.plotting_hist(
+                                history, metrics, name, min_amount=10, epoche=epoch
+                            )
 
                             times_list.append(dt.now() - start_time)
                             print("actually it took: ", times_list[-1])
                             start_time = dt.now()
                             print("\n")
+
+                    del model, optimizer, history

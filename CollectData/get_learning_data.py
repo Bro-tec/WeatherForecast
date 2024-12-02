@@ -117,6 +117,22 @@ async def filter_dataHourly(data, feature_labels):
         data["condition" + str(j)] = [
             1 if icons.index(data["condition"][i]) == j else 0 for i in range(len(data))
         ]
+    data["wind_direction"] -= 22
+    data["wind_direction"] = [
+        390 if math.isnan(data["wind_direction"][i]) else data["wind_direction"][i]
+        for i in range(len(data))
+    ]
+    data["wind_direction"] = [
+        math.floor(data["wind_direction"][i] / 45)
+        if data["wind_direction"][i] >= 0
+        else math.floor(data["wind_direction"][i] * -1 / 45)
+        for i in range(len(data))
+    ]
+    # print("wind_direction", data["wind_direction"])
+    for j in range(9):
+        data["wind_direction" + str(j)] = [
+            1 if data["wind_direction"][i] == j else 0 for i in range(len(data))
+        ]
     # data["icon"] = [float(icons.index(data["icon"][i])) for i in range(len(data))]
     # data["condition"] = [
     #     float(icons.index(data["condition"][i])) for i in range(len(data))
@@ -198,9 +214,16 @@ async def DataHourlyAsync(
     label_hour_range=12,
     feature_labels=[
         "temperature",
-        "wind_direction",
         "wind_speed",
         "visibility",
+        "wind_direction0",
+        "wind_direction1",
+        "wind_direction2",
+        "wind_direction3",
+        "wind_direction4",
+        "wind_direction5",
+        "wind_direction6",
+        "wind_direction7",
         "icon0",
         "icon1",
         "icon2",

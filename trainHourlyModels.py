@@ -8,16 +8,16 @@ times_list = []
 
 device = wl.check_cuda()
 
-name = "full_feature"
-# skip = 161 # Hourly
-# skip = 518  # Multibatch
-skip = 0  # full_feature
+name = "test"
+# skip = 2594  # full_feature_layer1
+# skip = 6  # new_features
+skip = 0  # test
 month = True
 hours = True
 position = True
 
-inputs = 230
-outputs = 46
+inputs = 265
+outputs = 54
 if month:
     inputs += 1
 if hours:
@@ -26,13 +26,13 @@ if position:
     inputs += 3
 
 batchsize = 100
-epoches = 1
-repeat = 6
+epoches = 9999
+repeat = 3
 dropout = 0.2
-learning_rate = 0.001
-layers = 3
+learning_rate = 0.0001
+layers = 1
 
-hiddens = 30
+hiddens = 1
 sequences = 12
 hours_per_city = 24
 # round about 34:03 min each fit for 200 cities due to data loading (mostly because of concats)
