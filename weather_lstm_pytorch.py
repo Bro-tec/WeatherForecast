@@ -251,8 +251,8 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
 
     history["loss"] = (pd.Series(history["loss"])).tolist()
     history["val_loss"] = (pd.Series(history["val_loss"])).tolist()
-    # history["loss"] = [_ if _ < 10 and _ > 0 else 10 for _ in history["loss"]]
-    # history["val_loss"] = [_ if _ < 10 and _ > 0 else 10 for _ in history["val_loss"]]
+    history["loss"] = [-_ if _ < 0 else _ for _ in history["loss"]]
+    history["val_loss"] = [-_ if _ < 0 else _ for _ in history["val_loss"]]
 
     b, m = approximation(history["loss"])
     f = [b + (m * x) for x in range(len(history["loss"]))]
@@ -298,7 +298,7 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
     fig, ax = plt.subplots(
         2,
         2,
-        figsize=(4, 7),
+        figsize=(8, 14),
         sharey="row",
     )
     plt.title("Confusion Matrix")
@@ -314,8 +314,8 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
         )
         ax[j, k].xaxis.set_ticklabels(icons)
         ax[j, k].yaxis.set_ticklabels(icons)
-    fig.set_figwidth(16)
-    fig.set_figheight(16)
+    fig.set_figwidth(20)
+    fig.set_figheight(20)
     plt.savefig(f"./Plots/{name_tag}_matrix.png")
     plt.close()
 
@@ -394,7 +394,6 @@ def train_LSTM(
     y_test_tensors = scale_label(y_test_tensors)
     metrics = [MulticlassConfusionMatrix(num_classes=21).to(device) for i in range(4)]
 
-    predicted = []
     acc_list = []
     loss_list = []
     labels = Variable(torch.Tensor(np.array(y_train.tolist())).to(device)).to(
@@ -405,10 +404,6 @@ def train_LSTM(
     )  # .flatten()
     val_loss_list = []
     val_acc_list = []
-    predicts = [[] for i in range(4)]
-    predicted = [[] for i in range(4)]
-    max_acc_list = [[] for i in range(4)]
-    val_max_acc_list = [[] for i in range(4)]
 
     # trains the value using each input and label
     for batches in tqdm(range(math.ceil(X_train_tensors.shape[0] / batchsize))):
@@ -466,14 +461,15 @@ def train_LSTM(
         acc_list.append(
             (inds_o_condition == inds_s_condition).sum().item() / size * 100
         )
-        # print(acc_list[-3:])
-        # inplementig data into MulticlassConfusionMatrix
-        metric_output = unscale_output(output)
-        metrics[0].update(metric_output[:, -42:-21], train_label[:, -42:-21])
-        # print("metric", metric_output[:, -21:], label[:, -21:])
-        metrics[1].update(metric_output[:, -21:], train_label[:, -21:])
-        # label need to be scaled and zero labels need to get a value
-        # scaled_label = scale_label(label)
+
+        metrics[0].update(
+            torch.argmax(torch_outputs[:, 4:25], dim=1),
+            torch.argmax(scaled_batch[:, 4:25], dim=1),
+        )
+        metrics[1].update(
+            torch.argmax(torch_outputs[:, 25:46], dim=1),
+            torch.argmax(scaled_batch[:, 25:46], dim=1),
+        )
 
     my_acc = torch.FloatTensor(acc_list).to(device)
     my_acc = clean_torch(my_acc).mean()
@@ -547,11 +543,17 @@ def train_LSTM(
             (inds_o_condition == inds_s_condition).sum().item() / size * 100
         )
         # print(val_acc_list[-3:])
-        metric_output = unscale_output(output)
+        # metric_output = unscale_output(output)
         # print("metric", metric_output[:, 4:25].shape, test_label[:, 4:25].shape)
         # print("metric", metric_output[:, -21:].shape, test_label[:, -21:].shape)
-        metrics[2].update(metric_output[:, -42:-21], test_label[:, -42:-21])
-        metrics[3].update(metric_output[:, -21:], test_label[:, -21:])
+        metrics[2].update(
+            torch.argmax(output[:, -42:-21], dim=1),
+            torch.argmax(scaled_batch[:, -42:-21], dim=1),
+        )
+        metrics[3].update(
+            torch.argmax(output[:, -21:], dim=1),
+            torch.argmax(scaled_batch[:, -21:], dim=1),
+        )
 
     my_val_acc = torch.FloatTensor(val_acc_list).to(device)
     # setting nan values to 0 to calculate the mean
