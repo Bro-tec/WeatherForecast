@@ -215,7 +215,7 @@ def points(image, drw, df, ims, ofs):
             image.paste(ims[ix], (int(d.lon), int(d.lat) - 20), mask=ims[ix])
         if d.direction is not None:
             ix = ofs.index(d.direction)
-            image.paste(ims[ix], (int(d.lon) + 10, int(d.lat)), mask=ims[ix])
+            image.paste(ims[ix], (int(d.lon) - 10, int(d.lat) + 10), mask=ims[ix])
     return image
 
 
@@ -295,13 +295,13 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
     ]
     directions = [
         "Arrow_up",
-        "Arrow_right_up",
+        "Arrow_up_right",
         "Arrow_right",
-        "Arrow_right_down",
+        "Arrow_down_right",
         "Arrow_down",
-        "Arrow_down_left",
+        "Arrow_left_down",
         "Arrow_left",
-        "Arrow_left_up",
+        "Arrow_up_left",
         "None",
     ]
     name_tag = f"{name}_plot"
@@ -564,13 +564,13 @@ def unscale_output(output):
     ]
     directions = [
         "Arrow_up",
-        "Arrow_right_up",
+        "Arrow_up_right",
         "Arrow_right",
-        "Arrow_right_down",
+        "Arrow_down_right",
         "Arrow_down",
-        "Arrow_down_left",
+        "Arrow_left_down",
         "Arrow_left",
-        "Arrow_left_up",
+        "Arrow_up_left",
         "None",
     ]
     output[:, 0] *= 100
@@ -1260,6 +1260,8 @@ def predictHourly(date, device, mode="normal", model_num=0, id="", city="", time
 
 if __name__ == "__main__":
     device = check_cuda()
-    outs = future_prediction("working", device, id=["00020", "00044"])
+    outs = future_prediction(
+        "working", device, id=["00020", "00044", "00096", "00294", "00757"]
+    )
 
     im = show_image(outs)
