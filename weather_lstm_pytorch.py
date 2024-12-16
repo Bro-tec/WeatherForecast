@@ -1,5 +1,6 @@
 import CollectData.get_learning_data as gld
 import matplotlib.pyplot as plt
+from PIL import Image, ImageDraw
 import os
 import json
 from datetime import datetime as dt
@@ -120,12 +121,29 @@ def load_own_Model(
     sequences=24,
     dropout=0.1,
     batchsize=0,
+    prediction=False,
 ):
     history = {
         "accuracy": [0],
         "loss": [0],
         "val_accuracy": [0],
         "val_loss": [0],
+        "accuracy1": [0],
+        "loss1": [0],
+        "val_accuracy1": [0],
+        "val_loss1": [0],
+        "accuracy2": [0],
+        "loss2": [0],
+        "val_accuracy2": [0],
+        "val_loss2": [0],
+        "accuracy3": [0],
+        "loss3": [0],
+        "val_accuracy3": [0],
+        "val_loss3": [0],
+        "accuracy4": [0],
+        "loss4": [0],
+        "val_accuracy4": [0],
+        "val_loss4": [0],
         # "argmax_accuracy": [0],
         # "val_argmax_accuracy": [0],
     }
@@ -134,6 +152,9 @@ def load_own_Model(
     if os.path.exists(f"./Models/{name}.pth"):
         checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
         model = checkpoint["model"]
+    elif prediction:
+        print("Model not found")
+        return "error", "error", "error"
     else:
         print("Data not found or not complete")
         model = PyTorch_LSTM(
@@ -149,11 +170,11 @@ def load_own_Model(
     if os.path.exists(f"./Models/{name}_history.json"):
         with open(f"./Models/{name}_history.json", "r") as f:
             history = json.load(f)
-        print("Model found")
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     if os.path.exists(f"./Models/{name}.pth"):
         checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
         optimizer.load_state_dict(checkpoint["optimizer"])
+        print("Model found")
     model.train()
     # metric = MulticlassConfusionMatrix(num_classes=21).to(device)
     return model, optimizer, history
@@ -169,6 +190,74 @@ def save_own_Model(name, history, model, optimizer):
         f"./Models/{name}.pth",
     )
     print("Saved model")
+
+
+def cropping(image, x_list, y_list):
+    max_x = max(x_list) + 100
+    min_x = min(x_list) - 100
+    max_y = max(y_list) + 100
+    min_y = min(y_list) - 100
+    return image.crop((min_x, min_y, max_x, max_y))
+
+
+def points(image, drw, df, ims, ofs):
+    for i, d in df.iterrows():
+        print(d)
+        drw.ellipse(
+            xy=(d.lon - 3, d.lat - 3, d.lon + 3, d.lat + 3),
+            fill="red",
+        )
+        if d.icon is not None:
+            ix = ofs.index(d.icon)
+            image.paste(ims[ix], (int(d.lon) - 20, int(d.lat) - 20), mask=ims[ix])
+        if d.condition is not None:
+            ix = ofs.index(d.condition)
+            image.paste(ims[ix], (int(d.lon), int(d.lat) - 20), mask=ims[ix])
+        if d.direction is not None:
+            ix = ofs.index(d.direction)
+            image.paste(ims[ix], (int(d.lon) + 10, int(d.lat)), mask=ims[ix])
+    return image
+
+
+def l_to_px(list, rs, ps):
+    min_l = min(list)
+    max_l = max(list) - min_l
+    print(min_l, max_l)
+    print(list[0] - min_l)
+    print((list[0] - min_l) / max_l)
+    print(rs)
+    list = [((x - min_l) / max_l * rs) + ps for x in list]
+    return list
+
+
+def load_images():
+    mypath = "./Images"
+    onlyfiles = [
+        f for f in os.listdir(mypath) if os.path.isfile(os.path.join(mypath, f))
+    ]
+    ims = [
+        Image.open(mypath + "/" + of).convert("RGBA").resize((20, 20))
+        for of in onlyfiles
+    ]
+    onlyfiles = [of.replace(".png", "") for of in onlyfiles]
+    print(onlyfiles)
+    return ims, onlyfiles
+
+
+def show_image(outs):
+    im = Image.open("Images/Landkarte_Deutschland.png").convert("RGBA")
+    stations = gld.load_stations_csv()
+    stations["lat"] = [-x for x in stations["lat"].to_list()]
+    stations["lon"] = l_to_px(stations["lon"].to_list(), 648, 50)
+    stations["lat"] = l_to_px(stations["lat"], 904, 60)
+    outs_stations = pd.merge(outs, stations, on=["ID"])
+    ims, ofs = load_images()
+    # print(stations["lon"], stations["lat"])
+    drw = ImageDraw.Draw(im)
+    im = points(im, drw, outs_stations, ims, ofs)
+    # im = cropping(im, outs_stations["lon"], outs_stations["lat"])
+    im.show()
+    return im
 
 
 def approximation(all):
@@ -205,35 +294,52 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
         "reserved",
     ]
     directions = [
-        "up",
-        "right_up",
-        "right",
-        "right_down",
-        "down",
-        "down_left",
-        "left",
-        "left_up",
+        "Arrow_up",
+        "Arrow_right_up",
+        "Arrow_right",
+        "Arrow_right_down",
+        "Arrow_down",
+        "Arrow_down_left",
+        "Arrow_left",
+        "Arrow_left_up",
         "None",
     ]
     name_tag = f"{name}_plot"
     # summarize history for accuracy
-    fig, ax = plt.subplots(4, figsize=(20, 5), sharey="row")
+    fig, ax = plt.subplots(6, figsize=(20, 12), sharey="row")
     plt.title("model accuracy")
     plt.ylabel("accuracy")
     plt.xlabel("epoch")
     plt.title("model accuracy")
-    ax[0].plot(history["accuracy"][1:])
-    ax[0].plot(history["val_accuracy"][1:])
-    if len(history["accuracy"]) > 150:
-        ax[1].plot(history["accuracy"][-150:], alpha=0.6)
-        ax[1].plot(history["val_accuracy"][-150:], alpha=0.6)
-    if len(history["accuracy"]) > min_amount:
-        ax[2].plot(history["accuracy"][(-1 * min_amount) :])
-        ax[3].plot(history["val_accuracy"][(-1 * min_amount) :])
+    # ax[0].plot(history["accuracy"][1:])
+    # ax[0].plot(history["val_accuracy"][1:])
+    ax[0].plot(history["accuracy1"][1:])
+    ax[0].plot(history["val_accuracy1"][1:])
+    ax[0].plot(history["accuracy2"][1:])
+    ax[0].plot(history["val_accuracy2"][1:])
+    ax[0].plot(history["accuracy3"][1:])
+    ax[0].plot(history["val_accuracy3"][1:])
+    ax[0].plot(history["accuracy4"][1:])
+    ax[0].plot(history["val_accuracy4"][1:])
+    ax[1].plot(history["accuracy"][1:])
+    ax[1].plot(history["val_accuracy"][1:])
+    ax[2].plot(history["accuracy1"][1:])
+    ax[2].plot(history["val_accuracy1"][1:])
+    ax[3].plot(history["accuracy2"][1:])
+    ax[3].plot(history["val_accuracy2"][1:])
+    ax[4].plot(history["accuracy3"][1:])
+    ax[4].plot(history["val_accuracy3"][1:])
+    ax[5].plot(history["accuracy4"][1:])
+    ax[5].plot(history["val_accuracy4"][1:])
+    # if len(history["accuracy"]) > min_amount:
+    #     ax[2].plot(history["accuracy"][(-1 * min_amount) :])
+    #     ax[3].plot(history["val_accuracy"][(-1 * min_amount) :])
     ax[0].grid(axis="y")
     ax[1].grid(axis="y")
     ax[2].grid(axis="y")
     ax[3].grid(axis="y")
+    ax[4].grid(axis="y")
+    ax[5].grid(axis="y")
     ax[0].legend(
         [
             "train",
@@ -258,23 +364,67 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
     plt.ylabel("loss")
     plt.xlabel("epoch")
 
-    history["loss"] = (pd.Series(history["loss"])).tolist()
-    history["val_loss"] = (pd.Series(history["val_loss"])).tolist()
-    history["loss"] = [-_ if _ < 0 else _ for _ in history["loss"]]
-    history["val_loss"] = [-_ if _ < 0 else _ for _ in history["val_loss"]]
+    history["loss"] = [
+        -_ if _ < 0 else _ for _ in (pd.Series(history["loss"])).tolist()
+    ]
+    history["val_loss"] = [
+        -_ if _ < 0 else _ for _ in (pd.Series(history["val_loss"])).tolist()
+    ]
+    history["loss1"] = [
+        -_ if _ < 0 else _ for _ in (pd.Series(history["loss1"])).tolist()
+    ]
+    history["val_loss1"] = [
+        -_ if _ < 0 else _ for _ in (pd.Series(history["val_loss1"])).tolist()
+    ]
+    history["loss2"] = [
+        -_ if _ < 0 else _ for _ in (pd.Series(history["loss2"])).tolist()
+    ]
+    history["val_loss2"] = [
+        -_ if _ < 0 else _ for _ in (pd.Series(history["val_loss2"])).tolist()
+    ]
+    history["loss3"] = [
+        -_ if _ < 0 else _ for _ in (pd.Series(history["loss3"])).tolist()
+    ]
+    history["val_loss3"] = [
+        -_ if _ < 0 else _ for _ in (pd.Series(history["val_loss3"])).tolist()
+    ]
+    history["loss4"] = [
+        -_ if _ < 0 else _ for _ in (pd.Series(history["loss4"])).tolist()
+    ]
+    history["val_loss4"] = [
+        -_ if _ < 0 else _ for _ in (pd.Series(history["val_loss4"])).tolist()
+    ]
 
-    b, m = approximation(history["loss"])
-    f = [b + (m * x) for x in range(len(history["loss"]))]
-    b2, m2 = approximation(history["loss"][-150:])
-    f2 = [b2 + (m2 * x) for x in range(150)]
+    b, m = approximation(history["loss"][1:])
+    f = [b + (m * x) for x in range(1, len(history["loss"]))]
+    b1, m1 = approximation(history["loss1"][1:])
+    f1 = [b1 + (m1 * x) for x in range(1, len(history["loss1"]))]
+    b2, m2 = approximation(history["loss2"][1:])
+    f2 = [b2 + (m2 * x) for x in range(1, len(history["loss2"]))]
+    b3, m3 = approximation(history["loss3"][1:])
+    f3 = [b3 + (m3 * x) for x in range(1, len(history["loss3"]))]
+    b4, m4 = approximation(history["loss4"][1:])
+    f4 = [b4 + (m4 * x) for x in range(1, len(history["loss4"]))]
+
     # summarize history for loss
-    fig, ax = plt.subplots(4, figsize=(20, 5), sharey="row")
+    fig, ax = plt.subplots(6, figsize=(20, 12), sharey="row")
 
-    ax[0].plot(history["loss"], alpha=0.8)
-    ax[0].plot(history["val_loss"], alpha=0.75)
-    ax[0].plot(f)
+    ax[0].plot(history["loss"][1:])
+    ax[0].plot(history["val_loss"][1:])
+    ax[0].plot(history["loss1"][1:])
+    ax[0].plot(history["val_loss1"][1:])
+    ax[0].plot(history["loss2"][1:])
+    ax[0].plot(history["val_loss2"][1:])
+    ax[0].plot(history["loss3"][1:])
+    ax[0].plot(history["val_loss3"][1:])
+    ax[0].plot(history["loss4"][1:])
+    ax[0].plot(history["val_loss4"][1:])
     ax[0].grid(axis="y")
-    ax[0].legend(
+    ax[1].plot(history["loss"][1:], alpha=0.8)
+    ax[1].plot(history["val_loss"][1:], alpha=0.75)
+    ax[1].plot(f)
+    ax[1].grid(axis="y")
+    ax[1].legend(
         [
             "train / Epoche:" + str(epoche + 1),
             "test",
@@ -283,23 +433,58 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
         ],
         loc="upper left",
     )
-    ax[1].plot(history["loss"][-150:], alpha=0.8)
-    ax[1].plot(history["val_loss"][-150:], alpha=0.75)
-    ax[1].plot(f2)
-    ax[1].grid(axis="y")
-    ax[1].legend(
+    ax[2].plot(history["loss1"][1:], alpha=0.8)
+    ax[2].plot(history["val_loss1"][1:], alpha=0.75)
+    ax[2].plot(f1)
+    ax[2].grid(axis="y")
+    ax[2].legend(
         [
-            "train",
+            "train / Epoche:" + str(epoche + 1),
             "test",
-            # "linear train: {:.1f} + {:.5f}x".format(b2 * 10, m2),
+            # "linear train: {:.1f} + {:.5f}x".format(b * 10, m),
+            "linear train: {:.5f}x".format(m1),
+        ],
+        loc="upper left",
+    )
+    ax[3].plot(history["loss2"][1:], alpha=0.8)
+    ax[3].plot(history["val_loss2"][1:], alpha=0.75)
+    ax[3].plot(f2)
+    ax[3].grid(axis="y")
+    ax[3].legend(
+        [
+            "train / Epoche:" + str(epoche + 1),
+            "test",
+            # "linear train: {:.1f} + {:.5f}x".format(b * 10, m),
             "linear train: {:.5f}x".format(m2),
         ],
         loc="upper left",
     )
-    ax[2].plot(history["loss"][(-1 * min_amount) :])
-    ax[2].grid(axis="y")
-    ax[3].plot(history["val_loss"][(-1 * min_amount) :])
-    ax[3].grid(axis="y")
+    ax[4].plot(history["loss3"][1:], alpha=0.8)
+    ax[4].plot(history["val_loss3"][1:], alpha=0.75)
+    ax[4].plot(f3)
+    ax[4].grid(axis="y")
+    ax[4].legend(
+        [
+            "train / Epoche:" + str(epoche + 1),
+            "test",
+            # "linear train: {:.1f} + {:.5f}x".format(b * 10, m),
+            "linear train: {:.5f}x".format(m3),
+        ],
+        loc="upper left",
+    )
+    ax[5].plot(history["loss4"][1:], alpha=0.8)
+    ax[5].plot(history["val_loss4"][1:], alpha=0.75)
+    ax[5].plot(f4)
+    ax[5].grid(axis="y")
+    ax[5].legend(
+        [
+            "train / Epoche:" + str(epoche + 1),
+            "test",
+            # "linear train: {:.1f} + {:.5f}x".format(b * 10, m),
+            "linear train: {:.5f}x".format(m4),
+        ],
+        loc="upper left",
+    )
     plt.savefig(f"./Plots/{name_tag}_loss.png")
     plt.close()
 
@@ -346,18 +531,72 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
         )
         ax[j, k].xaxis.set_ticklabels(icons)
         ax[j, k].yaxis.set_ticklabels(icons)
-    fig.set_figwidth(20)
-    fig.set_figheight(20)
+    fig.set_figwidth(30)
+    fig.set_figheight(30)
     plt.savefig(f"./Plots/{name_tag}_matrix.png")
     plt.close()
 
 
 # unscaling the output because it usually doesnt get over 1
 def unscale_output(output):
+    icons = [
+        None,
+        "clear-day",
+        "clear-night",
+        "partly-cloudy-day",
+        "partly-cloudy-night",
+        "cloudy",
+        "fog",
+        "wind",
+        "rain",
+        "sleet",
+        "snow",
+        "hail",
+        "thunderstorm",
+        "dry",
+        "moist",
+        "wet",
+        "rime",
+        "ice",
+        "glaze",
+        "not dry",
+        "reserved",
+    ]
+    directions = [
+        "Arrow_up",
+        "Arrow_right_up",
+        "Arrow_right",
+        "Arrow_right_down",
+        "Arrow_down",
+        "Arrow_down_left",
+        "Arrow_left",
+        "Arrow_left_up",
+        "None",
+    ]
     output[:, 0] *= 100
-    output[:, 1] *= 100
+    if output[:, 1] <= 0:
+        output[:, 1] = 0
+    else:
+        output[:, 1] *= 100
     output[:, 2] *= 10000
-    return output
+
+    inds_o_direction = torch.argmax(output[:, 3:12], dim=1)
+    inds_o_icon = torch.argmax(output[:, 12:33], dim=1)
+    inds_o_condition = torch.argmax(output[:, 33:54], dim=1)
+    direction = [directions[i] for i in inds_o_direction]
+    icon = [icons[i] for i in inds_o_icon]
+    condition = [icons[i] for i in inds_o_condition]
+
+    return pd.DataFrame(
+        {
+            "temperature": output[:, 0].tolist(),
+            "wind_speed": output[:, 1].tolist(),
+            "visibility": output[:, 2].tolist(),
+            "direction": direction,
+            "icon": icon,
+            "condition": condition,
+        }
+    )
 
 
 # scaling label to check if output was good enough
@@ -426,8 +665,15 @@ def train_LSTM(
         MulticlassConfusionMatrix(num_classes=9).to(device) for i in range(2)
     ] + [MulticlassConfusionMatrix(num_classes=21).to(device) for i in range(4)]
 
-    acc_list = []
     loss_list = []
+    acc_list1 = []
+    loss_list1 = []
+    acc_list2 = []
+    loss_list2 = []
+    acc_list3 = []
+    loss_list3 = []
+    acc_list4 = []
+    loss_list4 = []
     labels = Variable(torch.Tensor(np.array(y_train.tolist())).to(device)).to(
         device
     )  # .flatten()
@@ -435,7 +681,14 @@ def train_LSTM(
         device
     )  # .flatten()
     val_loss_list = []
-    val_acc_list = []
+    val_loss_list1 = []
+    val_acc_list1 = []
+    val_loss_list2 = []
+    val_acc_list2 = []
+    val_loss_list3 = []
+    val_acc_list3 = []
+    val_loss_list4 = []
+    val_acc_list4 = []
 
     # trains the value using each input and label
     for batches in tqdm(range(math.ceil(X_train_tensors.shape[0] / batchsize))):
@@ -451,7 +704,7 @@ def train_LSTM(
                 X_train_tensors[batches * batchsize :], device, hiddens=False
             )
             scaled_batch = y_train_tensors[batches * batchsize :].detach().clone()
-            train_label = labels[batches * batchsize :]
+            # train_label = labels[batches * batchsize :]
         else:
             model.set_hiddens(batchsize, device)
             output = model.forward(
@@ -464,19 +717,20 @@ def train_LSTM(
                 .detach()
                 .clone()
             )
-            train_label = labels[batches * batchsize : (batches + 1) * batchsize]
+            # train_label = labels[batches * batchsize : (batches + 1) * batchsize]
 
         torch_outputs = output.detach().clone()
         # print("output", output.shape, "\nscaled_batch", scaled_batch.shape)
-        loss = MSEloss_fn(output[:, :3], scaled_batch[:, :3].double())
-        loss += CE1loss_fn(output[:, 3:12], torch.max(scaled_batch[:, 3:12], dim=1)[1])
-        loss += CE2loss_fn(
-            output[:, 12:33], torch.max(scaled_batch[:, 12:33], dim=1)[1]
+        loss1 = MSEloss_fn(output[:, :3], scaled_batch[:, :3].double())
+        loss2 = CE1loss_fn(output[:, 3:12], torch.argmax(scaled_batch[:, 3:12], dim=1))
+        loss3 = CE2loss_fn(
+            output[:, 12:33], torch.argmax(scaled_batch[:, 12:33], dim=1)
         )
-        loss += CE3loss_fn(
-            output[:, 33:54], torch.max(scaled_batch[:, 33:54], dim=1)[1]
+        loss4 = CE3loss_fn(
+            output[:, 33:54], torch.argmax(scaled_batch[:, 33:54], dim=1)
         )
-        # calculates the loss of the loss function
+        # calculates the loss of the loss functions
+        loss = loss1 + loss2 + loss3 + loss4
         loss.backward()
         # improve from loss, this is the actual backpropergation
         optimizer.step()
@@ -484,54 +738,118 @@ def train_LSTM(
         optimizer.zero_grad()
 
         loss_list.append(float(loss.item()))
+        loss_list1.append(float(loss1.item()))
+        loss_list2.append(float(loss2.item()))
+        loss_list3.append(float(loss3.item()))
+        loss_list4.append(float(loss4.item()))
 
         size = torch_outputs.shape[0]
 
-        compare = torch_outputs[:, :4] - scaled_batch[:, :4]
-        compare[compare < 0] *= -1
-        acc_list.append(100 / (1 + ((compare).float().sum() / (size * 4))))
-        _, inds_o_direction = torch.max(torch_outputs[:, 3:12], dim=1)
-        _, inds_s_direction = torch.max(scaled_batch[:, 3:12], dim=1)
-        _, inds_o_icon = torch.max(torch_outputs[:, 12:33], dim=1)
-        _, inds_s_icon = torch.max(scaled_batch[:, 12:33], dim=1)
-        _, inds_o_condition = torch.max(torch_outputs[:, 33:54], dim=1)
-        _, inds_s_condition = torch.max(scaled_batch[:, 33:54], dim=1)
-        acc_list.append(
+        compare = (
+            (torch.pow(torch_outputs[:, :3] - scaled_batch[:, :3], 2)).float().sum()
+        )
+        if compare <= 0:
+            return 100
+        else:
+            acc_list1.append(100 / (1 + (compare / size * 3)))
+        inds_o_direction = torch.argmax(torch_outputs[:, 3:12], dim=1)
+        inds_s_direction = torch.argmax(scaled_batch[:, 3:12], dim=1)
+        inds_o_icon = torch.argmax(torch_outputs[:, 12:33], dim=1)
+        inds_s_icon = torch.argmax(scaled_batch[:, 12:33], dim=1)
+        inds_o_condition = torch.argmax(torch_outputs[:, 33:54], dim=1)
+        inds_s_condition = torch.argmax(scaled_batch[:, 33:54], dim=1)
+        acc_list2.append(
             (inds_o_direction == inds_s_direction).sum().item() / size * 100
         )
-        acc_list.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
-        acc_list.append(
+        acc_list3.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
+        acc_list4.append(
             (inds_o_condition == inds_s_condition).sum().item() / size * 100
         )
-
         metrics[0].update(
-            torch.argmax(torch_outputs[:, 3:12], dim=1),
-            torch.argmax(scaled_batch[:, 3:12], dim=1),
+            inds_o_direction,
+            inds_s_direction,
         )
+        # print(
+        #     inds_o_direction,
+        #     "\n",
+        #     inds_s_direction,
+        # )
         metrics[2].update(
-            torch.argmax(torch_outputs[:, 12:33], dim=1),
-            torch.argmax(scaled_batch[:, 12:33], dim=1),
+            inds_o_icon,
+            inds_s_icon,
         )
         metrics[3].update(
-            torch.argmax(torch_outputs[:, 33:54], dim=1),
-            torch.argmax(scaled_batch[:, 33:54], dim=1),
+            inds_o_condition,
+            inds_s_condition,
         )
 
-    my_acc = torch.FloatTensor(acc_list).to(device)
+    my_acc = torch.FloatTensor(acc_list1 + acc_list2 + acc_list3 + acc_list4).to(device)
     my_acc = clean_torch(my_acc).mean()
+    my_acc1 = torch.FloatTensor(acc_list1).to(device)
+    my_acc1 = clean_torch(my_acc1).mean()
+    my_acc2 = torch.FloatTensor(acc_list2).to(device)
+    my_acc2 = clean_torch(my_acc2).mean()
+    my_acc3 = torch.FloatTensor(acc_list3).to(device)
+    my_acc3 = clean_torch(my_acc3).mean()
+    my_acc4 = torch.FloatTensor(acc_list4).to(device)
+    my_acc4 = clean_torch(my_acc4).mean()
     my_loss = torch.FloatTensor(loss_list).to(device)
     my_loss = clean_torch(my_loss).mean()
+    my_loss1 = torch.FloatTensor(loss_list1).to(device)
+    my_loss1 = clean_torch(my_loss1).mean()
+    my_loss2 = torch.FloatTensor(loss_list2).to(device)
+    my_loss2 = clean_torch(my_loss2).mean()
+    my_loss3 = torch.FloatTensor(loss_list3).to(device)
+    my_loss3 = clean_torch(my_loss3).mean()
+    my_loss4 = torch.FloatTensor(loss_list4).to(device)
+    my_loss4 = clean_torch(my_loss4).mean()
 
     # showing training
     if my_loss != "NaN":
-        history["loss"].append(float(my_loss) / 100)
+        history["loss"].append(float(my_loss))
     else:
         history["loss"].append(history["loss"][-1])
+
+    if my_loss1 != "NaN":
+        history["loss1"].append(float(my_loss1))
+    else:
+        history["loss1"].append(history["loss1"][-1])
+
+    if my_loss2 != "NaN":
+        history["loss2"].append(float(my_loss2))
+    else:
+        history["loss2"].append(history["loss2"][-1])
+
+    if my_loss3 != "NaN":
+        history["loss3"].append(float(my_loss3))
+    else:
+        history["loss3"].append(history["loss3"][-1])
+
+    if my_loss4 != "NaN":
+        history["loss4"].append(float(my_loss4))
+    else:
+        history["loss4"].append(history["loss4"][-1])
 
     if my_acc != "NaN":
         history["accuracy"].append(float(my_acc))
     else:
         history["accuracy"].append(history["accuracy"][-1])
+    if my_acc1 != "NaN":
+        history["accuracy1"].append(float(my_acc1))
+    else:
+        history["accuracy1"].append(history["accuracy1"][-1])
+    if my_acc2 != "NaN":
+        history["accuracy2"].append(float(my_acc2))
+    else:
+        history["accuracy2"].append(history["accuracy2"][-1])
+    if my_acc3 != "NaN":
+        history["accuracy3"].append(float(my_acc3))
+    else:
+        history["accuracy3"].append(history["accuracy3"][-1])
+    if my_acc4 != "NaN":
+        history["accuracy4"].append(float(my_acc4))
+    else:
+        history["accuracy4"].append(history["accuracy4"][-1])
     print(
         "\nEpoch {}/{}, Loss: {:.5f}, Accuracy: {:.5f} \n".format(
             epoch + 1, epoch_count, my_loss, my_acc
@@ -553,7 +871,7 @@ def train_LSTM(
                     X_test_tensors[batches * batchsize :], device, hiddens=False
                 )
                 scaled_batch = y_test_tensors[batches * batchsize :]
-                test_label = val_labels[batches * batchsize :]
+                # test_label = val_labels[batches * batchsize :]
             else:
                 model.set_hiddens(batchsize, device)
                 output = model.forward(
@@ -564,76 +882,132 @@ def train_LSTM(
                 scaled_batch = y_test_tensors[
                     batches * batchsize : (batches + 1) * batchsize
                 ]
-                test_label = val_labels[batches * batchsize : (batches + 1) * batchsize]
+                # test_label = val_labels[batches * batchsize : (batches + 1) * batchsize]
 
             val_torch_outputs = output.detach().clone()
             # del output, input
 
             # loss
-            val_loss = MSEloss_fn(output[:, :3], scaled_batch[:, :3].double())
-            val_loss += CE1loss_fn(
-                output[:, 3:12], torch.max(scaled_batch[:, 3:12], dim=1)[1]
+            val_loss1 = MSEloss_fn(output[:, :3], scaled_batch[:, :3].double())
+            val_loss2 = CE1loss_fn(
+                output[:, 3:12], torch.argmax(scaled_batch[:, 3:12], dim=1)
             )
-            val_loss += CE2loss_fn(
-                output[:, 12:33], torch.max(scaled_batch[:, 12:33], dim=1)[1]
+            val_loss3 = CE2loss_fn(
+                output[:, 12:33], torch.argmax(scaled_batch[:, 12:33], dim=1)
             )
-            val_loss += CE3loss_fn(
-                output[:, 33:54], torch.max(scaled_batch[:, 33:54], dim=1)[1]
+            val_loss4 = CE3loss_fn(
+                output[:, 33:54], torch.argmax(scaled_batch[:, 33:54], dim=1)
             )
+            val_loss_list1.append(float(val_loss1.item()))
+            val_loss_list2.append(float(val_loss2.item()))
+            val_loss_list3.append(float(val_loss3.item()))
+            val_loss_list4.append(float(val_loss4.item()))
+            val_loss = val_loss1 + val_loss2 + val_loss3 + val_loss4
             val_loss_list.append(float(val_loss.item()))
 
         size = val_torch_outputs.shape[0]
-        compare = val_torch_outputs[:, :4] - scaled_batch[:, :4]
-        # compare = val_torch_outputs[1:] - scaled_val_label
-        compare[compare < 0] *= -1
-        val_acc_list.append(100 / (1 + ((compare).float().sum() / (size * 4))))
-        _, inds_o_direction = torch.max(val_torch_outputs[:, 3:12], dim=1)
-        _, inds_s_direction = torch.max(scaled_batch[:, 3:12], dim=1)
-        _, inds_o_icon = torch.max(val_torch_outputs[:, 12:33], dim=1)
-        _, inds_s_icon = torch.max(scaled_batch[:, 12:33], dim=1)
-        _, inds_o_condition = torch.max(val_torch_outputs[:, 33:54], dim=1)
-        _, inds_s_condition = torch.max(scaled_batch[:, 33:54], dim=1)
-        val_acc_list.append(
+        compare = (
+            (torch.pow(val_torch_outputs[:, :3] - scaled_batch[:, :3], 2)).float().sum()
+        )
+        if compare <= 0:
+            return 100
+        else:
+            val_acc_list1.append(100 / (1 + (compare / size * 3)))
+        inds_o_direction = torch.argmax(val_torch_outputs[:, 3:12], dim=1)
+        inds_s_direction = torch.argmax(scaled_batch[:, 3:12], dim=1)
+        inds_o_icon = torch.argmax(val_torch_outputs[:, 12:33], dim=1)
+        inds_s_icon = torch.argmax(scaled_batch[:, 12:33], dim=1)
+        inds_o_condition = torch.argmax(val_torch_outputs[:, 33:54], dim=1)
+        inds_s_condition = torch.argmax(scaled_batch[:, 33:54], dim=1)
+        val_acc_list2.append(
             (inds_o_direction == inds_s_direction).sum().item() / size * 100
         )
-        val_acc_list.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
-        val_acc_list.append(
+        val_acc_list3.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
+        val_acc_list4.append(
             (inds_o_condition == inds_s_condition).sum().item() / size * 100
         )
-        # print(val_acc_list[-3:])
-        # metric_output = unscale_output(output)
-        # print("metric", metric_output[:, 4:25].shape, test_label[:, 4:25].shape)
-        # print("metric", metric_output[:, -21:].shape, test_label[:, -21:].shape)
+        # print(
+        #     inds_o_direction,
+        #     "\n",
+        #     inds_s_direction,
+        # )
         metrics[1].update(
-            torch.argmax(output[:, 3:12], dim=1),
-            torch.argmax(scaled_batch[:, 3:12], dim=1),
+            inds_o_direction,
+            inds_s_direction,
         )
         metrics[4].update(
-            torch.argmax(output[:, 12:33], dim=1),
-            torch.argmax(scaled_batch[:, 12:33], dim=1),
+            inds_o_icon,
+            inds_s_icon,
         )
         metrics[5].update(
-            torch.argmax(output[:, 33:54], dim=1),
-            torch.argmax(scaled_batch[:, 33:54], dim=1),
+            inds_o_condition,
+            inds_s_condition,
         )
 
-    my_val_acc = torch.FloatTensor(val_acc_list).to(device)
-    # setting nan values to 0 to calculate the mean
+    my_val_acc = torch.FloatTensor(
+        val_acc_list1 + val_acc_list2 + val_acc_list3 + val_acc_list4
+    ).to(device)
     my_val_acc = clean_torch(my_val_acc).mean()
+    my_val_acc1 = torch.FloatTensor(val_acc_list1).to(device)
+    my_val_acc1 = clean_torch(my_val_acc1).mean()
+    my_val_acc2 = torch.FloatTensor(val_acc_list2).to(device)
+    my_val_acc2 = clean_torch(my_val_acc2).mean()
+    my_val_acc3 = torch.FloatTensor(val_acc_list3).to(device)
+    my_val_acc3 = clean_torch(my_val_acc3).mean()
+    my_val_acc4 = torch.FloatTensor(val_acc_list4).to(device)
+    my_val_acc4 = clean_torch(my_val_acc4).mean()
     my_val_loss = torch.FloatTensor(val_loss_list).to(device)
     my_val_loss = clean_torch(my_val_loss).mean()
+    my_val_loss1 = torch.FloatTensor(val_loss_list1).to(device)
+    my_val_loss1 = clean_torch(my_val_loss1).mean()
+    my_val_loss2 = torch.FloatTensor(val_loss_list2).to(device)
+    my_val_loss2 = clean_torch(my_val_loss2).mean()
+    my_val_loss3 = torch.FloatTensor(val_loss_list3).to(device)
+    my_val_loss3 = clean_torch(my_val_loss3).mean()
+    my_val_loss4 = torch.FloatTensor(val_loss_list4).to(device)
+    my_val_loss4 = clean_torch(my_val_loss4).mean()
 
     if my_val_loss != "NaN":
-        # history["val_loss"].append(convert_loss(float(my_val_loss)))
-        history["val_loss"].append(float(my_val_loss) / 100)
+        history["val_loss"].append(float(my_val_loss))
     else:
         history["val_loss"].append(history["val_loss"][-1])
+    if my_val_loss1 != "NaN":
+        history["val_loss1"].append(float(my_val_loss1))
+    else:
+        history["val_loss1"].append(history["val_loss1"][-1])
+    if my_val_loss2 != "NaN":
+        history["val_loss2"].append(float(my_val_loss2))
+    else:
+        history["val_loss2"].append(history["val_loss2"][-1])
+    if my_val_loss3 != "NaN":
+        history["val_loss3"].append(float(my_val_loss3))
+    else:
+        history["val_loss3"].append(history["val_loss3"][-1])
+    if my_val_loss4 != "NaN":
+        history["val_loss4"].append(float(my_val_loss4))
+    else:
+        history["val_loss4"].append(history["val_loss4"][-1])
 
     if my_val_acc != "NaN":
-        # history["val_accuracy"].append(convert_loss(float(my_val_acc)))
         history["val_accuracy"].append(float(my_val_acc))
     else:
         history["val_accuracy"].append(history["val_accuracy"][-1])
+    if my_val_acc1 != "NaN":
+        history["val_accuracy1"].append(float(my_val_acc1))
+    else:
+        history["val_accuracy1"].append(history["val_accuracy1"][-1])
+    if my_val_acc2 != "NaN":
+        history["val_accuracy2"].append(float(my_val_acc2))
+    else:
+        history["val_accuracy2"].append(history["val_accuracy2"][-1])
+    if my_val_acc3 != "NaN":
+        history["val_accuracy3"].append(float(my_val_acc3))
+    else:
+        history["val_accuracy3"].append(history["val_accuracy3"][-1])
+    if my_val_acc4 != "NaN":
+        history["val_accuracy4"].append(float(my_val_acc4))
+    else:
+        history["val_accuracy4"].append(history["val_accuracy4"][-1])
     print(
         "\nEpoch {}/{}, val Loss: {:.8f}, val Accuracy: {:.5f}".format(
             # epoch + 1, epoch_count, convert_loss(my_val_loss), my_val_acc
@@ -642,6 +1016,17 @@ def train_LSTM(
             my_val_loss,
             my_val_acc,
         )
+    )
+
+    del (
+        MSEloss_fn,
+        CE1loss_fn,
+        CE2loss_fn,
+        CE3loss_fn,
+        X_train_tensors,
+        y_train_tensors,
+        X_test_tensors,
+        y_test_tensors,
     )
 
     return model, history, metrics, optimizer
@@ -693,14 +1078,136 @@ def plotting_Prediction_hourly(
 
 
 # aktively used reshaping and predicting
-def prediction(model, train, name, device):
+def prediction(model, train, label, device):
+    X_test_tensors = torch.reshape(
+        Variable(torch.Tensor(train).to(device)).to(device),
+        (1, train.shape[0], train.shape[1]),
+    ).to(device)
+    y_test_tensors = []
+    if len(label) > 0:
+        y_test_tensors = torch.reshape(
+            Variable(torch.Tensor(label)).to(device),
+            (1, label.shape[0], label.shape[1]),
+        ).to(device)
+    X_test_tensors = scale_features(X_test_tensors)
+    if len(label) > 0:
+        y_test_tensors = scale_label(y_test_tensors)
+    model.eval()
+    val_acc_list1 = []
+    val_acc_list2 = []
+    val_acc_list3 = []
+    val_acc_list4 = []
+    output = 0
+    scaled_batch = 0
+    with torch.no_grad():
+        model.set_hiddens(1, device)
+        # print("runs")
+        output = model.forward(X_test_tensors, device, hiddens=False)
+
+        if len(label) > 0:
+            scaled_batch = y_test_tensors
+        # test_label = val_labels[batches * batchsize :]
+
+        val_torch_outputs = output.detach().clone()
+        # del output, input
+
+    size = val_torch_outputs.shape[0]
+
+    if len(label) > 0:
+        compare = (
+            (torch.pow(val_torch_outputs[:, :3] - scaled_batch[:, :3], 2)).float().sum()
+        )
+        if compare <= 0:
+            return 100
+        else:
+            val_acc_list1.append(100 / (1 + (compare / size * 3)))
+        inds_o_direction = torch.argmax(val_torch_outputs[:, 3:12], dim=1)
+        inds_s_direction = torch.argmax(scaled_batch[:, 3:12], dim=1)
+        inds_o_icon = torch.argmax(val_torch_outputs[:, 12:33], dim=1)
+        inds_s_icon = torch.argmax(scaled_batch[:, 12:33], dim=1)
+        inds_o_condition = torch.argmax(val_torch_outputs[:, 33:54], dim=1)
+        inds_s_condition = torch.argmax(scaled_batch[:, 33:54], dim=1)
+        val_acc_list2.append(
+            (inds_o_direction == inds_s_direction).sum().item() / size * 100
+        )
+        val_acc_list3.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
+        val_acc_list4.append(
+            (inds_o_condition == inds_s_condition).sum().item() / size * 100
+        )
+        my_val_acc = torch.FloatTensor(
+            val_acc_list1 + val_acc_list2 + val_acc_list3 + val_acc_list4
+        ).to(device)
+        my_val_acc = clean_torch(my_val_acc).mean()
+        my_val_acc1 = torch.FloatTensor(val_acc_list1).to(device)
+        my_val_acc1 = clean_torch(my_val_acc1).mean()
+        my_val_acc2 = torch.FloatTensor(val_acc_list2).to(device)
+        my_val_acc2 = clean_torch(my_val_acc2).mean()
+        my_val_acc3 = torch.FloatTensor(val_acc_list3).to(device)
+        my_val_acc3 = clean_torch(my_val_acc3).mean()
+        my_val_acc4 = torch.FloatTensor(val_acc_list4).to(device)
+        my_val_acc4 = clean_torch(my_val_acc4).mean()
+    output = unscale_output(output=output)
+    return output
+
+
+# https://www.geeksforgeeks.org/python-last-occurrence-of-some-element-in-a-list/
+def last_occurrence(lst, val):
+    index = -1
+    while True:
+        try:
+            index = lst.index(val, index + 1)
+        except ValueError:
+            return index
+
+
+def future_prediction(model_name, device, id=[], hours=1):
+    ids, train, label = gld.get_predictDataHourly(dt.now(), id=id)
+    print(ids)
+    uids = list(set(ids))
+    print(train.shape, label.shape)
+    model, optimizer, history = load_own_Model(model_name, device)
+    if type(model) == "str":
+        print("choose an other name")
+        return []
+    output_list = pd.DataFrame()
+    for ui in uids:
+        t = max(train[last_occurrence(ids, ui), :, -5]) + 1
+        if t >= 24:
+            t -= 24
+        # print(train[last_occurrence(ids, ui), :, -5])
+        output = prediction(model, train[last_occurrence(ids, ui)], [], device)
+        output["ID"] = ui
+        output["Time"] = t
+        output_list = pd.concat([output_list, output])
+    print(output_list)
+    return output_list
+
+
+def check_prediction(model_name, device, id=[], hours=1):
     train_tensors = Variable(torch.Tensor(train).to(device)).to(device)
     input_final = torch.reshape(train_tensors, (1, 1, train_tensors.shape[-1])).to(
         device
     )
-    output = model.forward(input_final, device)
-    output = unscale_output(output=output, name=name)
-    return [output]
+    ids, train, label = gld.get_predictDataHourly(dt.now(), id=id)
+    print(ids)
+    uids = list(set(ids))
+    print(train.shape, label.shape)
+    model, optimizer, history = load_own_Model(model_name, device)
+    if type(model) == "str":
+        print("choose an other name")
+        return []
+    output_list = pd.DataFrame()
+    for ui in uids:
+        t = max(train[last_occurrence(ids, ui), :, -5]) + 1
+        if t >= 24:
+            t -= 24
+        # print(train[last_occurrence(ids, ui), :, -5])
+        output = prediction(model, train[last_occurrence(ids, ui)], [], device)
+        output["ID"] = ui
+        output["Time"] = t
+        output_list = pd.concat([output_list, output])
+    print(output_list)
+    return output_list
 
 
 # prediction main code specially for hourly models
@@ -749,3 +1256,10 @@ def predictHourly(date, device, mode="normal", model_num=0, id="", city="", time
             plotting_Prediction_hourly(
                 train[time], out_list, "future", mode=mode, t=model_num
             )
+
+
+if __name__ == "__main__":
+    device = check_cuda()
+    outs = future_prediction("working", device, id=["00020", "00044"])
+
+    im = show_image(outs)

@@ -117,22 +117,28 @@ async def filter_dataHourly(data, feature_labels):
         data["condition" + str(j)] = [
             1 if icons.index(data["condition"][i]) == j else 0 for i in range(len(data))
         ]
+    # print("wind_direction: ", data["wind_direction"].to_list())
     data["wind_direction"] -= 22
+    # print("wind_direction changed: ", data["wind_direction"].to_list())
     data["wind_direction"] = [
         390 if math.isnan(data["wind_direction"][i]) else data["wind_direction"][i]
         for i in range(len(data))
     ]
+    # print("wind_direction new val: ", data["wind_direction"].to_list())
     data["wind_direction"] = [
         math.floor(data["wind_direction"][i] / 45)
         if data["wind_direction"][i] >= 0
         else math.floor(data["wind_direction"][i] * -1 / 45)
         for i in range(len(data))
     ]
+
+    # print("wind_direction numbers: ", data["wind_direction"].to_list())
     # print("wind_direction", data["wind_direction"])
     for j in range(9):
         data["wind_direction" + str(j)] = [
             1 if data["wind_direction"][i] == j else 0 for i in range(len(data))
         ]
+        # print("wind_direction", str(j), ": ", data["wind_direction" + str(j)].to_list())
     # data["icon"] = [float(icons.index(data["icon"][i])) for i in range(len(data))]
     # data["condition"] = [
     #     float(icons.index(data["condition"][i])) for i in range(len(data))
@@ -224,6 +230,7 @@ async def DataHourlyAsync(
         "wind_direction5",
         "wind_direction6",
         "wind_direction7",
+        "wind_direction8",
         "icon0",
         "icon1",
         "icon2",
@@ -321,13 +328,17 @@ async def DataHourlyAsync(
                         continous_data[str(l[1])] = continous_data[str(l[1])][
                             continous_data[str(l[1])].shape[0] - continous_hour_range :
                         ]
+    id_list = []
     train_list = []
     label_list = []
+
+    print(continous_data.keys)
 
     # Iterate through the keys of the continuous data dictionary
     for k in tqdm(continous_data.keys(), total=len(continous_data.keys())):
         if continous_data[k].shape[0] == continous_hour_range:
             for j in range(continous_hour_range - label_hour_range - 1):
+                id_list.append(k)
                 train_list.append(continous_data[k][j : j + label_hour_range])
                 label_list.append(
                     continous_data[k][j + label_hour_range + 1][
@@ -338,7 +349,7 @@ async def DataHourlyAsync(
     # Convert lists to numpy arrays in a single step
     train_np = np.array(train_list)
     label_np = np.array(label_list)
-    return train_np, label_np
+    return id_list, train_np, label_np
 
 
 # main function for hourly dataretrival to switch between async and non async
@@ -358,7 +369,7 @@ def gen_trainDataHourly_Async(
         for i in range(redos):
             x, y = [], []
             if i == redos - 1:
-                x, y = asyncio.run(
+                _, x, y = asyncio.run(
                     DataHourlyAsync(
                         cityP[s * i :],
                         cityP,
@@ -372,7 +383,7 @@ def gen_trainDataHourly_Async(
                 )
                 # x,y,z = asyncio.run(DataHourlyAsync(cityP[s*i:], cityP, date, r_mode=True, minTime=minTime, duration=duration.days))
             else:
-                x, y = asyncio.run(
+                _, x, y = asyncio.run(
                     DataHourlyAsync(
                         cityP[s * i : s * (i + 1)],
                         cityP,
@@ -394,20 +405,41 @@ def gen_trainDataHourly_Async(
 
 
 # hourly data retreval for predictions
-def get_predictDataHourly(date, city="", id=""):
+def get_predictDataHourly(
+    date, city=[], id=[], seq=12, max_batch=24, month=True, hours=True, position=True
+):
     cityP = load_stations_csv()
     cities = load_stations_csv()
-    if city != "":
-        cityP = cityP[cityP["Name"] == city]
-    elif id != "":
-        cityP = cityP[cityP["ID"] == id]
+    if len(city) > 0:
+        cityP = cityP[cityP["Name"].isin(city)]
+    elif len(id) > 0:
+        cityP = cityP[cityP["ID"].isin(id)]
     else:
-        return
+        print("continuing with all cities")
 
-    if date <= dt.now() - td(days=3):
+    if date <= dt.now() - td(days=1):
         return asyncio.run(DataHourlyAsync(cityP, cities, date))
     else:
-        return asyncio.run(DataHourlyAsync(cityP, cities, date))
+        asyncio.run(
+            DataHourlyAsync(
+                cityP,
+                cities,
+                date - td(days=1),
+                month=month,
+                hours=hours,
+                position=position,
+            )
+        )
+        return asyncio.run(
+            DataHourlyAsync(
+                cityP,
+                cities,
+                date,
+                month=month,
+                hours=hours,
+                position=position,
+            )
+        )
 
 
 async def getWeatherByStationIDDate(stid, dates):
