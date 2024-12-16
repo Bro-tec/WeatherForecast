@@ -568,7 +568,7 @@ def unscale_output(output):
         "Arrow_right",
         "Arrow_down_right",
         "Arrow_down",
-        "Arrow_left_down",
+        "Arrow_down_left",
         "Arrow_left",
         "Arrow_up_left",
         "None",
