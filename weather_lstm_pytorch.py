@@ -109,8 +109,7 @@ class PyTorch_LSTM(nn.Module):
         return l.type(torch.float64).to(device)
 
 
-# loading model if already saved or creating a new model
-def load_own_Model(
+def create_own_Model(
     name,
     device,
     input_count=230,
@@ -121,8 +120,69 @@ def load_own_Model(
     sequences=24,
     dropout=0.1,
     batchsize=0,
-    prediction=False,
+    month=True,
+    hours=True,
+    position=True,
 ):
+    if os.path.exists(f"./Models/{name}.pth"):
+        print("Model does already exist")
+        # this code only exists to edit models, which didnt got parameters before
+        # Run only once !!!
+        # checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
+        # checkpoint["input_count"] = input_count
+        # checkpoint["output_count"] = output_count
+        # checkpoint["learning_rate"] = learning_rate
+        # checkpoint["layer"] = layer
+        # checkpoint["hiddensize"] = hiddensize
+        # checkpoint["sequences"] = sequences
+        # checkpoint["dropout"] = dropout
+        # checkpoint["batchsize"] = batchsize
+        # checkpoint["month"] = month
+        # checkpoint["hours"] = hours
+        # checkpoint["position"] = position
+        # print(checkpoint)
+        # torch.save(
+        #     checkpoint,
+        #     f"./Models/{name}.pth",
+        # )
+    else:
+        print("Model Created")
+        model = PyTorch_LSTM(
+            input_count,
+            output_count,
+            device,
+            h_size=hiddensize,
+            seq_size=sequences,
+            layer=layer,
+            dropout=dropout,
+            batchsize=batchsize,
+        )
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+        others = {
+            "input_count": input_count,
+            "output_count": output_count,
+            "learning_rate": learning_rate,
+            "layer": layer,
+            "hiddensize": hiddensize,
+            "sequences": sequences,
+            "dropout": dropout,
+            "batchsize": batchsize,
+            "month": month,
+            "hours": hours,
+            "position": position,
+        }
+        others["model"] = model
+        others["optimizer"] = optimizer.state_dict()
+
+        torch.save(
+            others,
+            f"./Models/{name}.pth",
+        )
+
+
+# loading model if already saved or creating a new model
+def load_own_Model(name, device, load_others=False):
     history = {
         "accuracy": [0],
         "loss": [0],
@@ -148,47 +208,44 @@ def load_own_Model(
         # "val_argmax_accuracy": [0],
     }
     model = {"haha": [1, 2, 3]}
+    optimizer = {"haha": [1, 2, 3]}
+    others = {"haha": [1, 2, 3]}
 
     if os.path.exists(f"./Models/{name}.pth"):
         checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
+
         model = checkpoint["model"]
-    elif prediction:
-        print("Model not found")
-        return "error", "error", "error"
+        optimizer = optim.Adam(model.parameters(), lr=checkpoint["learning_rate"])
+        optimizer.load_state_dict(checkpoint["optimizer"])
+        del checkpoint["model"], checkpoint["optimizer"]
+        others = checkpoint
+        print("Model found")
     else:
         print("Data not found or not complete")
-        model = PyTorch_LSTM(
-            input_count,
-            output_count,
-            device,
-            h_size=hiddensize,
-            seq_size=sequences,
-            layer=layer,
-            dropout=dropout,
-            batchsize=batchsize,
-        )
+        return "error", "error", "error"
     if os.path.exists(f"./Models/{name}_history.json"):
         with open(f"./Models/{name}_history.json", "r") as f:
             history = json.load(f)
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    if os.path.exists(f"./Models/{name}.pth"):
-        checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
-        optimizer.load_state_dict(checkpoint["optimizer"])
-        print("Model found")
+
     model.train()
     # metric = MulticlassConfusionMatrix(num_classes=21).to(device)
+    if load_others:
+        return model, optimizer, history, others
     return model, optimizer, history
 
 
 # saving model if saving_mode set to ts or timestamp it will use the number for the model to save it.
 # ts helps to choose saved model data before the model started to overfit or not work anymore
-def save_own_Model(name, history, model, optimizer):
+def save_own_Model(name, history, model, optimizer, device):
     with open(f"./Models/{name}_history.json", "w") as fp:
         json.dump(history, fp)
+    checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
+    checkpoint.update({"model": model, "optimizer": optimizer.state_dict()})
     torch.save(
-        {"model": model, "optimizer": optimizer.state_dict()},
+        checkpoint,
         f"./Models/{name}.pth",
     )
+
     print("Saved model")
 
 
@@ -254,7 +311,11 @@ def show_image(outs):
     ims, ofs = load_images()
     # print(stations["lon"], stations["lat"])
     drw = ImageDraw.Draw(im)
+
+    drw.text((50, 5), "hi", align="left")
+
     im = points(im, drw, outs_stations, ims, ofs)
+
     # im = cropping(im, outs_stations["lon"], outs_stations["lat"])
     im.show()
     return im
@@ -1161,15 +1222,39 @@ def last_occurrence(lst, val):
 
 
 def future_prediction(model_name, device, id=[], hours=1):
-    ids, train, label = gld.get_predictDataHourly(dt.now(), id=id)
-    print(ids)
+    model, optimizer, history, others = load_own_Model(
+        model_name, device, load_others=True
+    )
+    ids, train, label = gld.get_predictDataHourly(
+        dt.now(),
+        id=id,
+        seq=others["sequences"],
+        month=others["month"],
+        hours=others["hours"],
+        position=others["position"],
+        forecast=hours,
+    )
+    # {
+    #     "input_count": input_count,
+    #     "output_count": output_count,
+    #     "learning_rate": learning_rate,
+    #     "layer": layer,
+    #     "hiddensize": hiddensize,
+    #     "sequences": sequences,
+    #     "dropout": dropout,
+    #     "batchsize": batchsize,
+    #     "month": month,
+    #     "hours": hours,
+    #     "position": position,
+    # }
+    # print("ids: ", ids)
     uids = list(set(ids))
-    print(train.shape, label.shape)
-    model, optimizer, history = load_own_Model(model_name, device)
+    # print(train.shape, label.shape)
     if type(model) == "str":
         print("choose an other name")
         return []
     output_list = pd.DataFrame()
+    print(len(ids), train.shape)
     for ui in uids:
         t = max(train[last_occurrence(ids, ui), :, -5]) + 1
         if t >= 24:
@@ -1188,8 +1273,11 @@ def check_prediction(model_name, device, id=[], hours=1):
     input_final = torch.reshape(train_tensors, (1, 1, train_tensors.shape[-1])).to(
         device
     )
-    ids, train, label = gld.get_predictDataHourly(dt.now(), id=id)
-    print(ids)
+    ids, train, label = gld.get_predictDataHourly(
+        dt.now(),
+        id=id,
+    )
+    print(len(ids))
     uids = list(set(ids))
     print(train.shape, label.shape)
     model, optimizer, history = load_own_Model(model_name, device)
@@ -1210,58 +1298,13 @@ def check_prediction(model_name, device, id=[], hours=1):
     return output_list
 
 
-# prediction main code specially for hourly models
-def predictHourly(date, device, mode="normal", model_num=0, id="", city="", time=-1):
-    out_list = []
-    if date <= dt.now() - td(days=2):
-        train, label, label24 = gld.get_predictDataHourly(date, id=id)
-        if isinstance(train, str):
-            print("error occured please retry with other ID/Name")
-            return
-        print("\ntraining count", train.shape)
-
-        model, optimizer, loss_fn, metric, history = load_own_Model(
-            "Hourly", device, loading_mode=mode, t=model_num
-        )
-        model24, optimizer24, loss_fn24, metric24, history24 = load_own_Model(
-            "Hourly24", device, loading_mode=mode, t=model_num
-        )
-        if not id == "" or city == "":
-            out_list.append(prediction(model, train[time], "Hourly", device))
-            out_list.append(prediction(model24, train[time], "Hourly", device))
-            plotting_Prediction_hourly(
-                train[time],
-                out_list,
-                "test",
-                hourly=label[time],
-                hourly24=label24[time],
-                mode=mode,
-                t=model_num,
-            )
-    else:
-        train = gld.get_predictDataHourly(date, id=id)
-        if isinstance(train, str):
-            print("error occured please retry with other ID/Name")
-            return
-        print("\ntraining count", train.shape)
-        model, optimizer, loss_fn, metric, history = load_own_Model(
-            "Hourly", device, loading_mode=mode, t=model_num
-        )
-        model24, optimizer24, loss_fn24, metric24, history24 = load_own_Model(
-            "Hourly24", device, loading_mode=mode, t=model_num
-        )
-        if not id == "" or city == "":
-            out_list.append(prediction(model, train[time], "Hourly", device))
-            out_list.append(prediction(model24, train[time], "Hourly", device))
-            plotting_Prediction_hourly(
-                train[time], out_list, "future", mode=mode, t=model_num
-            )
-
-
 if __name__ == "__main__":
     device = check_cuda()
     outs = future_prediction(
-        "working", device, id=["00020", "00044", "00096", "00294", "00757"]
+        "working",
+        device,
+        id=["00020", "00044"],  # , "00096", "00294", "00757"]
+        hours=3,
     )
-
+    print(outs.keys())
     im = show_image(outs)

@@ -40,7 +40,7 @@ icons = [
 ]
 # setted global bar to show status without using tqdm becaus of async
 hourly_bar = Bar("Processing", max=20)
-daily_bar = Bar("Processing", max=20)
+status_bar = Bar("Processing", max=20)
 
 
 # loading data from excel file
@@ -109,7 +109,10 @@ async def getCities(cityP, cityID, distance):
 
 # filter special for hourly named dataloader
 async def filter_dataHourly(data, feature_labels):
-    data.drop(["source_id"], axis=1, inplace=True)
+    if "source_id" in data:
+        data.drop(["source_id"], axis=1, inplace=True)
+    else:
+        print("Error:\n", data)
     for j in range(len(icons)):
         data["icon" + str(j)] = [
             1 if icons.index(data["icon"][i]) == j else 0 for i in range(len(data))
@@ -152,10 +155,15 @@ async def filter_dataHourly(data, feature_labels):
 
 
 # joining found data for hourly or returning error
-async def joinDataHourly(cityID, cities, lc, date, feature_labels):
+async def joinDataHourly(cityID, cities, lc, date, feature_labels, ignore_len=False):
+    newCities = []
+    print(date)
     data = await dwd.getWeatherByStationIDDate(cityID, date)
-    if len(data) < 24:
-        return pd.DataFrame(columns=["error"])
+    if len(data) < 24 and not ignore_len:
+        return pd.DataFrame(columns=["error"]), []
+    if data[0] == "error":
+        print(data[1])
+        return pd.DataFrame(columns=["error"]), []
     data = await filter_dataHourly(pd.DataFrame(data), feature_labels)
     for j in range(cities.shape[1]):
         i = 0
@@ -165,17 +173,18 @@ async def joinDataHourly(cityID, cities, lc, date, feature_labels):
                 cities.iloc[i, j], date, wait=False
             )
             i += 1
-            if len(newdata) < 24:
+            if len(newdata) < len(data):
                 if lcount >= lc * 7:
                     print("error occured")
-                    return pd.DataFrame(columns=["error"])
+                    return pd.DataFrame(columns=["error"]), []
                 lcount += 1
                 continue
             newdata = pd.DataFrame(newdata)
+            newCities.append(cities.iloc[i, j])
             newdata = await filter_dataHourly(newdata, feature_labels)
             data = pd.concat([data, pd.DataFrame(newdata)], ignore_index=True, axis=1)
     data.fillna(0, inplace=True)
-    return data.round(3)
+    return (data.round(3), newCities)
 
 
 # gathered async function to get hourly inputs and labels
@@ -188,11 +197,16 @@ async def get_DataHourlyAsync(
     month=False,
     hours=False,
     position=False,
+    ignore_len=False,
 ):
     cities = await getCities(cityP, row.ID, distance)
-    train_Data = await joinDataHourly(row.ID, cities, 4, date.date(), feature_labels)
+    train_Data, newCities = await joinDataHourly(
+        row.ID, cities, 4, date.date(), feature_labels, ignore_len=ignore_len
+    )
     if "error" in train_Data or len(train_Data) < 25:
         hourly_bar.next()
+        print("bad error occured: ", row.ID)
+        print(row)
         return pd.DataFrame(columns=["error"]), row.ID
     if hours:
         train_Data["hours"] = [i for i in range(len(train_Data))]
@@ -205,7 +219,8 @@ async def get_DataHourlyAsync(
     if len(train_Data) > 24:
         train_Data = train_Data[:24]
     hourly_bar.next()
-    return (train_Data.to_numpy(), row.ID)
+    # print("get_DataHourlyAsync: ", train_Data.to_numpy().shape, row.ID, newCities)
+    return (train_Data.to_numpy(), row.ID, newCities)
 
 
 # main async function to get hourly inputs and labels, to use parallelized dataretrival which makes the code faster
@@ -277,7 +292,9 @@ async def DataHourlyAsync(
     month=False,
     hours=False,
     position=False,
+    ignore_len=False,
 ):
+    print("cl: ", cityloop.shape)
     global continous_data
     global hourly_bar
     hourly_bar = Bar("Processing", max=len(cityloop))
@@ -308,11 +325,13 @@ async def DataHourlyAsync(
                     month=month,
                     hours=hours,
                     position=position,
+                    ignore_len=ignore_len,
                 )
                 for row in cityloop.itertuples(index=False)
             ]
         )
 
+    id_list = cityloop.ID.to_list()
     for l in tqdm(lists, total=len(lists)):
         # print("l[0]: ", l[0].shape)
         if len(l) > 0:
@@ -328,17 +347,18 @@ async def DataHourlyAsync(
                         continous_data[str(l[1])] = continous_data[str(l[1])][
                             continous_data[str(l[1])].shape[0] - continous_hour_range :
                         ]
-    id_list = []
+                id_list += l[2]
+
+    id_list = list(set(id_list))
     train_list = []
     label_list = []
 
-    print(continous_data.keys)
+    print(len(continous_data.keys()))
 
     # Iterate through the keys of the continuous data dictionary
     for k in tqdm(continous_data.keys(), total=len(continous_data.keys())):
         if continous_data[k].shape[0] == continous_hour_range:
             for j in range(continous_hour_range - label_hour_range - 1):
-                id_list.append(k)
                 train_list.append(continous_data[k][j : j + label_hour_range])
                 label_list.append(
                     continous_data[k][j + label_hour_range + 1][
@@ -406,12 +426,13 @@ def gen_trainDataHourly_Async(
 
 # hourly data retreval for predictions
 def get_predictDataHourly(
-    date, city=[], id=[], seq=12, max_batch=24, month=True, hours=True, position=True
+    date, city=[], id=[], seq=12, forecast=24, month=True, hours=True, position=True
 ):
     cityP = load_stations_csv()
     cities = load_stations_csv()
     if len(city) > 0:
         cityP = cityP[cityP["Name"].isin(city)]
+        id = cityP["ID"].to_list()
     elif len(id) > 0:
         cityP = cityP[cityP["ID"].isin(id)]
     else:
@@ -420,26 +441,43 @@ def get_predictDataHourly(
     if date <= dt.now() - td(days=1):
         return asyncio.run(DataHourlyAsync(cityP, cities, date))
     else:
-        asyncio.run(
-            DataHourlyAsync(
-                cityP,
-                cities,
-                date - td(days=1),
-                month=month,
-                hours=hours,
-                position=position,
+        x, y, z = id, 0, 0
+        x2 = []
+        for i in range(forecast):
+            print("Iterations: ", forecast, "/", (i + 1))
+            print(list(set(x) - set(x2)))
+            asyncio.run(
+                DataHourlyAsync(
+                    cities[cities["ID"].isin(list(set(x) - set(x2)))],
+                    cities,
+                    date - td(days=2),
+                    continous_hour_range=seq + 2,
+                    label_hour_range=seq,
+                    month=month,
+                    hours=hours,
+                    position=position,
+                    ignore_len=True,
+                )
             )
-        )
-        return asyncio.run(
-            DataHourlyAsync(
-                cityP,
-                cities,
-                date,
-                month=month,
-                hours=hours,
-                position=position,
+            x3, y, z = asyncio.run(
+                DataHourlyAsync(
+                    cities[cities["ID"].isin(list(set(x) - set(x2)))],
+                    cities,
+                    date - td(days=1),
+                    continous_hour_range=seq + 2,
+                    label_hour_range=seq,
+                    month=month,
+                    hours=hours,
+                    position=position,
+                    ignore_len=True,
+                )
             )
-        )
+            x2 = x
+            x = list(set(x + x3))
+            print("x2: ", len(x2))
+            print("y: ", y.shape)
+            print("z: ", z.shape)
+        return x2, y, z
 
 
 async def getWeatherByStationIDDate(stid, dates):
@@ -451,3 +489,28 @@ async def getWeatherByStationIDDate(stid, dates):
 
 def getWeatherData(stid, dates):
     return asyncio.run(getWeatherByStationIDDate(stid, dates))
+
+
+async def get_logic(i, rand_dates):
+    stri = str(i)
+    for ch in range(0, 5 - len(str(i))):
+        stri = "0" + stri
+    for rd in rand_dates:
+        data = await dwd.getSourcesByStationIDDate(stri, rd, delay=30)
+        status_bar.next()
+        if data[0] != "error":
+            return data
+    return ["error", "error"]
+    # status_bar.next()
+
+
+async def getSourceByStationIDDate(rd):
+    global status_bar
+    rang = 100000
+    status_bar = Bar("Processing", max=rang * len(rd))
+    list = await asyncio.gather(*[get_logic(i, rd) for i in range(0, rang)])
+    return list
+
+
+def getSourceData(rd):
+    return asyncio.run(getSourceByStationIDDate(rd))

@@ -8,31 +8,34 @@ times_list = []
 
 device = wl.check_cuda()
 
-name = "test"
+name = ["working"]
 # skip = 2594  # full_feature_layer1
 # skip = 6  # new_features
-skip = 0  # test
+# skip = 327  # model_PX
+skip = 4641  # working
+# skip = 0
 month = True
 hours = True
 position = True
 
-inputs = 265
+inputs = 270
 outputs = 54
 if month:
     inputs += 1
 if hours:
     inputs += 1
+
 if position:
     inputs += 3
 
 batchsize = 100
-epoches = 9999
+epoches = 3
 repeat = 3
-dropout = 0.2
-learning_rate = 0.0001
-layers = 1
+dropout = 0.1
+learning_rate = [0.0001]
+layers = [3]
 
-hiddens = 1
+hiddens = [100]
 sequences = 12
 hours_per_city = 24
 # round about 34:03 min each fit for 200 cities due to data loading (mostly because of concats)
@@ -56,18 +59,24 @@ hours_per_city = 24
 
 # , label24
 
-model, optimizer, history = wl.load_own_Model(
-    name,
-    device,
-    input_count=inputs,
-    output_count=outputs,
-    dropout=dropout,
-    hiddensize=hiddens,
-    sequences=sequences,
-    batchsize=batchsize,
-    learning_rate=learning_rate,
-    layer=layers,
-)
+for n in range(len(name)):
+    print(name[n])
+    wl.create_own_Model(
+        name[n],
+        device,
+        input_count=inputs,
+        output_count=outputs,
+        dropout=dropout,
+        hiddensize=hiddens[n],
+        sequences=sequences,
+        batchsize=batchsize,
+        learning_rate=learning_rate[n],
+        layer=layers[n],
+        month=month,
+        hours=hours,
+        position=position,
+    )
+
 
 for train, label, i, r in gld.gen_trainDataHourly_Async(
     skip_days=skip,
@@ -84,23 +93,32 @@ for train, label, i, r in gld.gen_trainDataHourly_Async(
     print("\n Days count: ", i, ", repeated ", repeat, "\\", r, "\n")
 
     if train.shape[0] >= 2:
-        for epoch in range(epoches):
-            model, history, metrics, optimizer = wl.train_LSTM(
-                name,
-                train,
-                label,
-                model,
-                optimizer,
-                history,
+        for n in range(len(name)):
+            print(name[n])
+            model, optimizer, history = wl.load_own_Model(
+                name[n],
                 device,
-                epoch_count=epoches,
-                epoch=epoch,
-                batchsize=batchsize,
             )
-            wl.save_own_Model(name, history, model, optimizer)
-            wl.plotting_hist(history, metrics, name, 10, epoche=epoch)
+            for epoch in range(epoches):
+                model, history, metrics, optimizer = wl.train_LSTM(
+                    name[n],
+                    train,
+                    label,
+                    model,
+                    optimizer,
+                    history,
+                    device,
+                    epoch_count=epoches,
+                    epoch=epoch,
+                    batchsize=batchsize,
+                )
+                wl.save_own_Model(name[n], history, model, optimizer, device)
+                wl.plotting_hist(history, metrics, name[n], 9, epoche=epoch)
+                del metrics
 
-            times_list.append(dt.now() - start_time)
-            print("actually it took: ", times_list[-1])
-            start_time = dt.now()
-            print("\n")
+                times_list.append(dt.now() - start_time)
+                print("actually it took: ", times_list[-1])
+                start_time = dt.now()
+                print("\n")
+
+            del model, optimizer, history
