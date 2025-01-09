@@ -1,6 +1,6 @@
 import CollectData.get_learning_data as gld
 import matplotlib.pyplot as plt
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import os
 import json
 from datetime import datetime as dt
@@ -259,24 +259,35 @@ def cropping(image, x_list, y_list):
 
 def points(image, drw, df, ims, ofs):
     for i, d in df.iterrows():
-        print(d)
+        # print(d)
         drw.ellipse(
             xy=(d.lon - 3, d.lat - 3, d.lon + 3, d.lat + 3),
             fill="red",
         )
-        if d.icon is not None:
+        if i == 0:
+            font = ImageFont.truetype("arial.ttf", 20)
+            drw.text((550, 15), str(d.Time) + " Uhr", (0, 0, 0), font=font)
+        # print(ofs)
+        if "icon" in d.keys():
+            if d.icon == None:
+                d.icon = "None"
             ix = ofs.index(d.icon)
             image.paste(ims[ix], (int(d.lon) - 20, int(d.lat) - 20), mask=ims[ix])
-        if d.condition is not None:
+        if "condition" in d.keys():
+            if d.condition == None:
+                d.condition = "None"
             ix = ofs.index(d.condition)
             image.paste(ims[ix], (int(d.lon), int(d.lat) - 20), mask=ims[ix])
-        if d.direction is not None:
+        if "direction" in d.keys():
+            if d.direction == None:
+                d.direction = "None"
             ix = ofs.index(d.direction)
             image.paste(ims[ix], (int(d.lon) - 10, int(d.lat) + 10), mask=ims[ix])
     return image
 
 
 def l_to_px(list, rs, ps):
+    # print("1:", list)
     min_l = min(list)
     max_l = max(list) - min_l
     print(min_l, max_l)
@@ -284,6 +295,7 @@ def l_to_px(list, rs, ps):
     print((list[0] - min_l) / max_l)
     print(rs)
     list = [((x - min_l) / max_l * rs) + ps for x in list]
+    # print("2:", list)
     return list
 
 
@@ -297,27 +309,36 @@ def load_images():
         for of in onlyfiles
     ]
     onlyfiles = [of.replace(".png", "") for of in onlyfiles]
-    print(onlyfiles)
+    # print(onlyfiles)
     return ims, onlyfiles
 
 
-def show_image(outs):
-    im = Image.open("Images/Landkarte_Deutschland.png").convert("RGBA")
-    stations = gld.load_stations_csv()
-    stations["lat"] = [-x for x in stations["lat"].to_list()]
-    stations["lon"] = l_to_px(stations["lon"].to_list(), 648, 50)
-    stations["lat"] = l_to_px(stations["lat"], 904, 60)
-    outs_stations = pd.merge(outs, stations, on=["ID"])
-    ims, ofs = load_images()
-    # print(stations["lon"], stations["lat"])
-    drw = ImageDraw.Draw(im)
+def show_image(outs, hours=1, name="germany_points.png"):
+    amount = int(len(outs) / hours)
+    print(amount, " = ", len(outs), " / ", hours)
+    for h in range(hours):
+        print(outs[amount * h : amount * (h + 1)].shape)
+        im = Image.open("Images/Landkarte_Deutschland.png").convert("RGBA")
+        stations = gld.load_stations_csv()
+        stations["lat"] = [-x for x in stations["lat"].to_list()]
+        stations["lon"] = l_to_px(stations["lon"].to_list(), 648, 50)
+        stations["lat"] = l_to_px(stations["lat"].to_list(), 904, 60)
+        outs_stations = pd.merge(
+            outs[amount * h : amount * (h + 1)],
+            stations,
+            on=["ID"],
+            suffixes=("_x", ""),
+        )
+        print(outs_stations.keys)
+        ims, ofs = load_images()
+        # print(stations["lon"], stations["lat"])
+        drw = ImageDraw.Draw(im)
 
-    drw.text((50, 5), "hi", align="left")
+        im = points(im, drw, outs_stations, ims, ofs)
+        im.save(name, "PNG")
 
-    im = points(im, drw, outs_stations, ims, ofs)
-
-    # im = cropping(im, outs_stations["lon"], outs_stations["lat"])
-    im.show()
+        # im = cropping(im, outs_stations["lon"], outs_stations["lat"])
+        im.show()
     return im
 
 
@@ -599,7 +620,7 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
 
 
 # unscaling the output because it usually doesnt get over 1
-def unscale_output(output):
+def unscale_output(output, ids, times, continueing=False):
     icons = [
         None,
         "clear-day",
@@ -635,10 +656,12 @@ def unscale_output(output):
         "None",
     ]
     output[:, 0] *= 100
-    if output[:, 1] <= 0:
-        output[:, 1] = 0
-    else:
-        output[:, 1] *= 100
+    print(output[:, 1])
+    for o in range(output.shape[0]):
+        if output[o, 1] <= 0:
+            output[o, 1] = 0
+        else:
+            output[o, 1] *= 100
     output[:, 2] *= 10000
 
     inds_o_direction = torch.argmax(output[:, 3:12], dim=1)
@@ -647,6 +670,20 @@ def unscale_output(output):
     direction = [directions[i] for i in inds_o_direction]
     icon = [icons[i] for i in inds_o_icon]
     condition = [icons[i] for i in inds_o_condition]
+
+    if continueing:
+        return pd.DataFrame(
+            {
+                "temperature": output[:, 0].tolist(),
+                "wind_speed": output[:, 1].tolist(),
+                "visibility": output[:, 2].tolist(),
+                "direction": direction,
+                "icon": icon,
+                "condition": condition,
+                "ID": ids,
+                "Time": times,
+            }
+        )
 
     return pd.DataFrame(
         {
@@ -1207,7 +1244,6 @@ def prediction(model, train, label, device):
         my_val_acc3 = clean_torch(my_val_acc3).mean()
         my_val_acc4 = torch.FloatTensor(val_acc_list4).to(device)
         my_val_acc4 = clean_torch(my_val_acc4).mean()
-    output = unscale_output(output=output)
     return output
 
 
@@ -1221,7 +1257,7 @@ def last_occurrence(lst, val):
             return index
 
 
-def future_prediction(model_name, device, id=[], hours=1):
+def future_prediction(model_name, device, id=[], hours=1, show_all=True):
     model, optimizer, history, others = load_own_Model(
         model_name, device, load_others=True
     )
@@ -1253,19 +1289,45 @@ def future_prediction(model_name, device, id=[], hours=1):
     if type(model) == "str":
         print("choose an other name")
         return []
-    output_list = pd.DataFrame()
-    print(len(ids), train.shape)
+    output_list = torch.zeros(1, 54).to(device)
+    id_list = []
+    time_list = []
+    vals = []
+    # print(len(ids), train.shape)
     for ui in uids:
-        t = max(train[last_occurrence(ids, ui), :, -5]) + 1
+        t = train[last_occurrence(ids, ui), :, -5][-1] + 1
         if t >= 24:
             t -= 24
         # print(train[last_occurrence(ids, ui), :, -5])
         output = prediction(model, train[last_occurrence(ids, ui)], [], device)
-        output["ID"] = ui
-        output["Time"] = t
-        output_list = pd.concat([output_list, output])
-    print(output_list)
-    return output_list
+        id_list.append(ui)
+        time_list.append(int(t))
+        vals.append(
+            [
+                train[last_occurrence(ids, ui), :, -3][-1],
+                train[last_occurrence(ids, ui), :, -2][-1],
+                train[last_occurrence(ids, ui), :, -1][-1],
+            ]
+        )
+        output_list = torch.cat([output_list, output.detach().clone()], dim=0)
+    # print(output_list.shape)
+    # print(id_list)
+    # print(time_list)
+    outputs, ids, times = gld.continue_prediction(
+        model,
+        output_list[1:],
+        id_list,
+        time_list,
+        vals,
+        hours - 1,
+        dt.now(),
+        device,
+        prediction=prediction,
+        show_all=show_all,
+        ids=id,
+    )
+    output_np = unscale_output(outputs, ids, times, continueing=True)
+    return output_np
 
 
 def check_prediction(model_name, device, id=[], hours=1):
@@ -1277,34 +1339,56 @@ def check_prediction(model_name, device, id=[], hours=1):
         dt.now(),
         id=id,
     )
-    print(len(ids))
+    # print(len(ids))
     uids = list(set(ids))
-    print(train.shape, label.shape)
+    print("trainLabel: ", train.shape, label.shape)
     model, optimizer, history = load_own_Model(model_name, device)
     if type(model) == "str":
         print("choose an other name")
         return []
-    output_list = pd.DataFrame()
+    output_list = torch.zeros(1, 55)
     for ui in uids:
         t = max(train[last_occurrence(ids, ui), :, -5]) + 1
         if t >= 24:
             t -= 24
         # print(train[last_occurrence(ids, ui), :, -5])
         output = prediction(model, train[last_occurrence(ids, ui)], [], device)
-        output["ID"] = ui
-        output["Time"] = t
-        output_list = pd.concat([output_list, output])
-    print(output_list)
+        output[54] = ui
+        output[55] = t
+        output_list = torch.cat(output, dim=1)
+
+    # output_list = pd.concat([output_list, output])
+    # print(output_list)
     return output_list
 
 
 if __name__ == "__main__":
     device = check_cuda()
+    h = 2
     outs = future_prediction(
         "working",
         device,
-        id=["00020", "00044"],  # , "00096", "00294", "00757"]
-        hours=3,
+        id=[
+            "00020",
+            "00044",
+            # "00103",
+            # "00183",
+            # "00644",
+            # "00896",
+            # "01046",
+            # "14157",
+            # "15013",
+            # "15000",
+            # "15120",
+            # "07489",
+            # "13669",
+            # "13714",
+            # "13952",
+        ],  # , "00096", "00294", "00757"]
+        hours=h,
+        show_all=False,
     )
-    print(outs.keys())
-    im = show_image(outs)
+    # print(outs.keys())
+    print(outs.shape)
+    # outs = gld.load_stations_csv()
+    im = show_image(outs, hours=h)

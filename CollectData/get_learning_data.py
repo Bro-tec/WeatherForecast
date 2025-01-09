@@ -8,7 +8,9 @@ from progress.bar import Bar
 import math
 import random
 from tqdm import tqdm
+import torch
 import warnings
+
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
@@ -45,9 +47,17 @@ status_bar = Bar("Processing", max=20)
 
 # loading data from excel file
 def load_stations_csv():
-    return pd.read_csv(
+    df = pd.read_csv(
         "stations.csv", dtype={"ID": object}
     )  # otherwise lstm cant load this
+    return df[df["label_vals"] == True]
+
+
+def load_stations_by_IDs(ids):
+    df = pd.read_csv(
+        "stations.csv", dtype={"ID": object}
+    )  # otherwise lstm cant load this
+    return df[df["ID"].isin(ids)]
 
 
 # calculating euclidean distance using pandas
@@ -69,7 +79,7 @@ async def chooseByNearest(chosen, unchosen, addLon=0, addLat=0):
 
 
 # listing cities starting with closest cities to point in single to multiple column counts
-async def getCities(cityP, cityID, distance):
+async def getCities(cityP, cityID, distance="near"):
     chosen = cityP[cityP["ID"] == cityID]
     unchosen = cityP.drop(cityP[cityP["ID"] == cityID].index)
     if len(chosen) < 1:
@@ -157,7 +167,6 @@ async def filter_dataHourly(data, feature_labels):
 # joining found data for hourly or returning error
 async def joinDataHourly(cityID, cities, lc, date, feature_labels, ignore_len=False):
     newCities = []
-    print(date)
     data = await dwd.getWeatherByStationIDDate(cityID, date)
     if len(data) < 24 and not ignore_len:
         return pd.DataFrame(columns=["error"]), []
@@ -206,7 +215,7 @@ async def get_DataHourlyAsync(
     if "error" in train_Data or len(train_Data) < 25:
         hourly_bar.next()
         print("bad error occured: ", row.ID)
-        print(row)
+        # print(row)
         return pd.DataFrame(columns=["error"]), row.ID
     if hours:
         train_Data["hours"] = [i for i in range(len(train_Data))]
@@ -293,9 +302,10 @@ async def DataHourlyAsync(
     hours=False,
     position=False,
     ignore_len=False,
+    label=True,
 ):
-    print("cl: ", cityloop.shape)
     global continous_data
+    # print("unchanged continous_data: ", len(continous_data.keys()))
     global hourly_bar
     hourly_bar = Bar("Processing", max=len(cityloop))
     lists = []
@@ -331,7 +341,10 @@ async def DataHourlyAsync(
             ]
         )
 
-    id_list = cityloop.ID.to_list()
+    # print(continous_hour_range, label_hour_range)
+    # id_list = cityloop.ID.to_list()
+    id_list = []
+    # print("idList", id_list)
     for l in tqdm(lists, total=len(lists)):
         # print("l[0]: ", l[0].shape)
         if len(l) > 0:
@@ -350,26 +363,36 @@ async def DataHourlyAsync(
                 id_list += l[2]
 
     id_list = list(set(id_list))
+    ids = []
     train_list = []
     label_list = []
 
-    print(len(continous_data.keys()))
+    # print("continous_data: ", len(continous_data.keys()))
 
     # Iterate through the keys of the continuous data dictionary
     for k in tqdm(continous_data.keys(), total=len(continous_data.keys())):
-        if continous_data[k].shape[0] == continous_hour_range:
-            for j in range(continous_hour_range - label_hour_range - 1):
+        if continous_data[k].shape[0] >= continous_hour_range:
+            ids.append(k)
+            extra = 1
+            if label:
+                extra = -1
+            # print("j loop: ", continous_data[k].shape[0] - label_hour_range + extra)
+            for j in range(continous_data[k].shape[0] - label_hour_range + extra):
                 train_list.append(continous_data[k][j : j + label_hour_range])
-                label_list.append(
-                    continous_data[k][j + label_hour_range + 1][
-                        [i for i in range(len(feature_labels))]
-                    ]
-                )
+                if label:
+                    # print(continous_data[k].shape, j + label_hour_range)
+                    label_list.append(
+                        continous_data[k][j + 1 : j + label_hour_range][
+                            [i for i in range(len(feature_labels))]
+                        ]
+                    )
 
     # Convert lists to numpy arrays in a single step
     train_np = np.array(train_list)
     label_np = np.array(label_list)
-    return id_list, train_np, label_np
+    # print("trs_List: ", len(train_list), len(label_list))
+    # print("trs: ", train_np.shape, label_np.shape)
+    return id_list, train_np, label_np, ids
 
 
 # main function for hourly dataretrival to switch between async and non async
@@ -389,7 +412,7 @@ def gen_trainDataHourly_Async(
         for i in range(redos):
             x, y = [], []
             if i == redos - 1:
-                _, x, y = asyncio.run(
+                _, x, y, _ = asyncio.run(
                     DataHourlyAsync(
                         cityP[s * i :],
                         cityP,
@@ -403,7 +426,7 @@ def gen_trainDataHourly_Async(
                 )
                 # x,y,z = asyncio.run(DataHourlyAsync(cityP[s*i:], cityP, date, r_mode=True, minTime=minTime, duration=duration.days))
             else:
-                _, x, y = asyncio.run(
+                _, x, y, _ = asyncio.run(
                     DataHourlyAsync(
                         cityP[s * i : s * (i + 1)],
                         cityP,
@@ -435,13 +458,15 @@ def get_predictDataHourly(
         id = cityP["ID"].to_list()
     elif len(id) > 0:
         cityP = cityP[cityP["ID"].isin(id)]
+        id = cityP["ID"].to_list()
     else:
+        id = cityP["ID"].to_list()
         print("continuing with all cities")
 
     if date <= dt.now() - td(days=1):
         return asyncio.run(DataHourlyAsync(cityP, cities, date))
     else:
-        x, y, z = id, 0, 0
+        x, y, z = id, [], []
         x2 = []
         for i in range(forecast):
             print("Iterations: ", forecast, "/", (i + 1))
@@ -451,33 +476,35 @@ def get_predictDataHourly(
                     cities[cities["ID"].isin(list(set(x) - set(x2)))],
                     cities,
                     date - td(days=2),
-                    continous_hour_range=seq + 2,
+                    continous_hour_range=seq + 1,
                     label_hour_range=seq,
                     month=month,
                     hours=hours,
                     position=position,
                     ignore_len=True,
+                    label=False,
                 )
             )
-            x3, y, z = asyncio.run(
+            x3, y, z, x1 = asyncio.run(
                 DataHourlyAsync(
                     cities[cities["ID"].isin(list(set(x) - set(x2)))],
                     cities,
                     date - td(days=1),
-                    continous_hour_range=seq + 2,
+                    continous_hour_range=seq,
                     label_hour_range=seq,
                     month=month,
                     hours=hours,
                     position=position,
                     ignore_len=True,
+                    label=False,
                 )
             )
             x2 = x
             x = list(set(x + x3))
-            print("x2: ", len(x2))
-            print("y: ", y.shape)
-            print("z: ", z.shape)
-        return x2, y, z
+            # print("x2: ", x2)
+            # print("y: ", y.shape)
+            # print("z: ", z.shape)
+        return x1, y, z
 
 
 async def getWeatherByStationIDDate(stid, dates):
@@ -485,6 +512,76 @@ async def getWeatherByStationIDDate(stid, dates):
         *[dwd.getWeatherByStationIDDate(stid, date) for date in dates]
     )
     return list
+
+
+def get_indices(lst, targets):
+    indices = []
+    for index, element in enumerate(lst):
+        if element in targets:
+            indices.append(index)
+    return indices
+
+
+def continue_prediction(
+    model,
+    output_list,
+    id_list,
+    time_list,
+    vals,
+    h,
+    date,
+    device,
+    prediction,
+    show_all=True,
+    ids=[],
+):
+    global continous_data
+    extended_id_list = id_list.copy()
+    for hr in range(1, h + 1):
+        for i, id in enumerate(id_list):
+            if hr >= 24:
+                time_list.append(time_list[i] + (hr % 24))
+            else:
+                time_list.append(time_list[i] + hr)
+            month = int(math.floor(int(date.month) / 24))
+
+            close = asyncio.run(getCities(load_stations_by_IDs(id_list), id))
+            close_list = close["ID"].to_list()
+            # print(id, close["ID"], "\n", close_list[0], close_list[1])
+            # print("vals:", len(vals), ", ", len(id_list), ", ", len(extended_id_list))
+            new_seq = torch.cat(
+                [
+                    output_list[(hr - 1) * len(id_list) + i],
+                    output_list[(hr - 1) * len(id_list) + id_list.index(close_list[0])],
+                    output_list[(hr - 1) * len(id_list) + id_list.index(close_list[1])],
+                    output_list[(hr - 1) * len(id_list) + id_list.index(close_list[2])],
+                    output_list[(hr - 1) * len(id_list) + id_list.index(close_list[3])],
+                    torch.Tensor([time_list[(hr - 1) * len(id_list) + i] + 1]).to(
+                        device
+                    ),
+                    torch.Tensor([month]).to(device),
+                    torch.Tensor(vals[i]).to(device),
+                ],
+                dim=0,
+            )
+            # print(continous_data[id].shape, np.array([new_seq.tolist()]).shape)
+            continous_data[id] = np.concatenate(
+                [continous_data[id], np.array([new_seq.tolist()])], axis=0
+            )
+            continous_data[id] = continous_data[id][1:]
+            # print(new_seq.shape)
+            # print(new_seq[-5], new_seq[-4], new_seq[-3], new_seq[-2], new_seq[-1])
+            output = prediction(model, continous_data[id], [], device)
+            extended_id_list.append(id)
+            output_list = torch.cat([output_list, output.detach().clone()], dim=0)
+    if len(ids) > 0 and not show_all:
+        gi = get_indices(extended_id_list, ids)
+        print(extended_id_list, ids)
+        print("indices: ", gi)
+        output_list = output_list[gi]
+        extended_id_list = [extended_id_list[i] for i in gi]
+        time_list = [time_list[i] for i in gi]
+    return output_list, extended_id_list, time_list
 
 
 def getWeatherData(stid, dates):
