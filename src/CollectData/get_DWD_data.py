@@ -1,4 +1,4 @@
-import requests
+# import requests
 import aiohttp
 import asyncio
 import random
@@ -94,14 +94,14 @@ async def getWeatherByStationIDDate(i, date, wait=True, delay=2):
                         if len(WeatherData["weather"]) != 0:
                             return WeatherData["weather"]
                         else:
-                            return "error", "error1"
+                            return ["error", "error1"]
                     else:
-                        return "error", "error2"
+                        return ["error", "error2"]
                 else:
-                    return "error", str(response.status)
+                    return ["error", str(response.status)]
     except Exception:
         print("error gets handled here")
-        return "error", "error4"
+        return ["error", "error4"]
 
 
 # https://stackoverflow.com/questions/553303/how-to-generate-a-random-date-between-two-other-dates
