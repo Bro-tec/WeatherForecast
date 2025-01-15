@@ -28,6 +28,24 @@ dd_models = Dropdown(
 
 
 def main(page: Page):
+    page.scroll = ScrollMode.ALWAYS
+
+    # def page_rezized(e):
+    #     main_col.height = str(page.window.height - 100)
+    #     page.update()
+
+    # page.on_resize = page_rezized
+    def resize_tab(e):
+        if int(tabs.selected_index) == 0:
+            main_col.height = 1000
+        elif int(tabs.selected_index) == 1:
+            main_col.height = 700
+        else:
+            main_col.height = 2000
+        page.update()
+
+    page.on_scroll = resize_tab
+
     def forecast_clicked(e):
         device = wlp.check_cuda()
         model, optimizer, history, others = wlp.load_own_Model(
@@ -366,9 +384,6 @@ def main(page: Page):
             error_text,
             forecast_images,
         ],
-        spacing=10,
-        scroll=ScrollMode.ALWAYS,
-        expand=False,
     )
 
     TM = Column(
@@ -421,14 +436,16 @@ def main(page: Page):
             Tab(tab_content=Text("Train Model", size=20), content=Container(TM)),
             Tab(
                 tab_content=Text("Forecast Weather", size=20),
-                content=Container(
-                    content=FW, height=500, border=border.all(1), bgcolor="white"
-                ),
+                content=Container(content=FW),
             ),
         ],
     )
 
-    page.add(Column([titel, tabs]))
+    main_col = Column([titel, tabs], height=1000, expand=True)
+
+    page.add(
+        main_col,
+    )
 
 
 app(main)
