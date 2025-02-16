@@ -13,34 +13,118 @@ if not os.path.isdir("Plots"):
 if not os.path.isdir("Images"):
     os.mkdir("Images")
     gdown.download(
-        "https://drive.google.com/file/d/1TyIs5rla8t5mvWgJxY1JKIZEcS8mZ605/view?usp=drive_link",
+        "https://drive.google.com/uc?id=1C7qt62bFEvM1hCMH04V3kzWDrHzRnQQN",
         "Images/Arrow_down.png",
     )
-    gdown.download("", "Images/Arrow_down_left.png")
-    gdown.download("", "Images/Arrow_down_right.png")
-    gdown.download("", "Images/Arrow_left.png")
-    gdown.download("", "Images/Arrow_right.png")
-    gdown.download("", "Images/Arrow_up.png")
-    gdown.download("", "Images/Arrow_up_left.png")
-    gdown.download("", "Images/Arrow_up_right.png")
-    gdown.download("", "Images/clear-day.png")
-    gdown.download("", "Images/clear-night.png")
-    gdown.download("", "Images/cloudy.png")
-    gdown.download("", "Images/dry.png")
-    gdown.download("", "Images/fog.png")
-    gdown.download("", "Images/glaze.png")
-    gdown.download("", "Images/hail.png")
-    gdown.download("", "Images/ice.png")
-    gdown.download("", "Images/Landkarte_Deutschland.png")
-    gdown.download("", "Images/moist.png")
-    gdown.download("", "Images/None.png")
-    gdown.download("", "Images/not_dry.png")
-    gdown.download("", "Images/partly-cloudy-day.png")
-    gdown.download("", "Images/partly-cloudy-night.png")
-    gdown.download("", "Images/rain.png")
-    gdown.download("", "Images/rime.png")
-    gdown.download("", "Images/sleet.png")
-    gdown.download("", "Images/snow.png")
-    gdown.download("", "Images/thunderstorm.png")
-    gdown.download("", "Images/wet.png")
-    gdown.download("", "Images/wind.png")
+    gdown.download(
+        "https://drive.google.com/uc?id=1i46b3sAnIvoHLGbJGeZFdaAkLVQ6csaz",
+        "Images/Arrow_down_left.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1Z3wr5lj3Rh9BpFqYDoxVjEcnc8__AJ85",
+        "Images/Arrow_down_right.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=11MFdQixPelDbRTzYH774SA-s5-tiJ3X3",
+        "Images/Arrow_left.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1GvuuSaOzxNo78XDtOu6Iil84PGJalqpV",
+        "Images/Arrow_right.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1P_LAgzntcjOdltwJAnjj24CTAbmR2ZZD",
+        "Images/Arrow_up.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=147-h7YyXVROwHPdL2wE1QlP7lYIKM3zk",
+        "Images/Arrow_up_left.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1QVush3Eh0sIsjpDYO5RThxUQaALqqDXw",
+        "Images/Arrow_up_right.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1hpYgW8BhxLtfPC6CF8qOxPGBW3H4Q1Iq",
+        "Images/clear-day.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1_YBRV2ygxqhwjmvrOgx8b0oFfmKM9TxN",
+        "Images/clear-night.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1JFbS-R1bPUPyum6KdN_41V_-X-ZGljQf",
+        "Images/cloudy.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1lYVmBERE5u-qUPr9vKVMQSxHarNi9BDC",
+        "Images/dry.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=16TjPPAFsfgYltp4zyGhMkY91ghmvNjiy",
+        "Images/fog.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1CSg98FAa5GtuvCu6jTRVUx68I0Va6gEp",
+        "Images/glaze.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1iuRSCMBalNEpm8A2nMh0g3LVBO_dGdKl",
+        "Images/hail.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1Z9-p6_nJOmD9vbZ83Rcfcr8JrA7VMHWA",
+        "Images/ice.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1RDIp-qTavVPsSD1-rOEBxsZHYbqKuw1N",
+        "Images/Landkarte_Deutschland.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1Hacnp0Tdyu4xAxVUDR8aJASbpZsoHPmX",
+        "Images/moist.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=19xuKAMmntAJnrNW9GNpvyhE5GuTK6jab",
+        "Images/None.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1Ecq1ysILVKfqj8_r5BK4bZuc3txtY0U7",
+        "Images/not_dry.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1pIwnGv8GVzf0WcF4jZrgwVNUTrtsTeZs",
+        "Images/partly-cloudy-day.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=15s9EGTGCkqR1UfWLg3UlV5bh4bwf4mUv",
+        "Images/partly-cloudy-night.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1xK7jspWHwzwpAM4MZxrts8XS_GZQCPQj",
+        "Images/rain.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1LyWveST9bRkmqZYqPCBUdzkNCjgWetCv",
+        "Images/rime.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1wt1BWxaXvO7n4yCRiGl9vurkFkMVQuMT",
+        "Images/sleet.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1n8Miz0pgoniKDS2gV0q1W3f6VpTjeIsk",
+        "Images/snow.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1a9zhvENIE8RIkRGX2Cex7osK6pQrKhzb",
+        "Images/thunderstorm.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1g8TK-sq1qoQyh9iaTIQ5rtjTMb7VfjPy",
+        "Images/wet.png",
+    )
+    gdown.download(
+        "https://drive.google.com/uc?id=1TyIs5rla8t5mvWgJxY1JKIZEcS8mZ605",
+        "Images/wind.png",
+    )
