@@ -6,6 +6,10 @@ if not os.path.isdir("Forecasts"):
 
 if not os.path.isdir("Models"):
     os.mkdir("Models")
+    gdown.download(
+        "https://drive.google.com/uc?id=1TY-S7VZasHZ1f1ZNOV1_nRS6Cf6wwL6G",
+        "Models/Loaded_Model.pth",
+    )
 
 if not os.path.isdir("Plots"):
     os.mkdir("Plots")
