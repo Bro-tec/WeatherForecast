@@ -7,6 +7,10 @@ This Code focused to predict data based on weather-data in germany using DWD dat
 The data gets retrieverd using Brightsky Api.
 
 
+## Load requirements.
+Before starting we need to download the requirements for the app using:
+<br>
+pip install -r requirements.txt
 <br>
 
 ## Start the App.
