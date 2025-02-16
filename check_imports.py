@@ -82,7 +82,7 @@ except ImportError:
     os.system("pip install pillow")
 
 try:
-    import torchmetrics
+    import gdown
 except ImportError:
-    print("installing torchmetrics")
-    os.system("pip install torchmetrics")
+    print("installing gdown")
+    os.system("pip install gdown")
