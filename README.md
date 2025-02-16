@@ -10,7 +10,9 @@ The data gets retrieverd using Brightsky Api.
 ## Load requirements.
 Before starting we need to download the requirements for the app using:
 <br>
+```ruby
 pip install -r requirements.txt
+```
 <br>
 
 ## Start the App.
