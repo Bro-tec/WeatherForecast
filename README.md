@@ -18,7 +18,7 @@ or just run ```check_imports.py```
 
 ## Start the App.
 There are two ways to start the app. <br>
-Run the main.bat  <br> 
+Run ```main.bat```  <br> 
 or <br>
 if you run the code for the first time load the needed data therefore run ```load_needed.py``` <br>
 if thats done we can continue <br>
