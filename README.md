@@ -14,7 +14,7 @@ There are two ways to start the app. <br>
 Run the main.bat         or         type flet run in the WeatherForecast folder in your chosen command prompt
 <br>
 
-[APP](https://drive.google.com/file/d/1dM8wX826x9x7uWYDUoMv4_ZfgIO9OWyf/view?usp=drive_link)
+![APP](https://drive.google.com/file/d/1dM8wX826x9x7uWYDUoMv4_ZfgIO9OWyf/view?usp=drive_link)
 
 <br>
 
