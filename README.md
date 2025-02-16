@@ -17,6 +17,12 @@ Run the main.bat         or         type flet run in the WeatherForecast folder 
 
 <br>
 
+after running the forecast the app returns images like this:
+
+<br>
+
+![Image](https://github.com/user-attachments/assets/dfa38801-492a-497b-83c3-0018b6c8945b)
+
 ## Documentation
 
 **[German Documentation](https://drive.google.com/file/d/17Y7CCb8q_BkaXafY_krfXaMJ5eqAW4U2/view?usp=sharing)**
