@@ -13,7 +13,7 @@ The data gets retrieverd using Brightsky Api.
 There are two ways to start the app. <br>
 Run the main.bat         or         type flet run in the WeatherForecast folder in your chosen command prompt
 <br>
-**![APP](https://drive.google.com/file/d/1dM8wX826x9x7uWYDUoMv4_ZfgIO9OWyf/view?usp=sharing)**
+**![Image](https://github.com/user-attachments/assets/3d520ef0-0c55-453a-80f2-a916689cb379)**
 
 <br>
 
