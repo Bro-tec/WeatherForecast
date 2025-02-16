@@ -14,10 +14,15 @@ Before starting we need to download the requirements for the app using:
 pip install -r requirements.txt
 ```
 <br>
+or just run ```check_imports.py```
 
 ## Start the App.
 There are two ways to start the app. <br>
-Run the main.bat         or         type ```flet run``` in the WeatherForecast folder in your chosen command prompt
+Run the main.bat  <br> 
+or <br>
+if you run the code for the first time load the needed data therefore run ```load_needed.py``` <br>
+if thats done we can continue <br>
+type ```flet run``` in the WeatherForecast folder in your chosen command prompt
 <br>
 <br>
 **![Image](https://github.com/user-attachments/assets/3d520ef0-0c55-453a-80f2-a916689cb379)**
