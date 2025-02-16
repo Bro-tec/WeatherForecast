@@ -3,19 +3,19 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-os.system("conda")
+# os.system("conda")
 
-os.system("conda info --envs")
-env = input(
-    "If you can see Conda environments\nType the environment name you want to choose.\nIf you cant see any names or dont want to choose any environement and want to continue on your main python environment just enter by letting it stay empty or choose a random wrong name.\nName: "
-)
-print(env)
-print(len(env))
-if len(env) > 0:
-    print("continue with " + env)
-    os.system("conda activate" + env)
-else:
-    print("continue without environment")
+# os.system("conda info --envs")
+# env = input(
+#     "If you can see Conda environments\nType the environment name you want to choose.\nIf you cant see any names or dont want to choose any environement and want to continue on your main python environment just enter by letting it stay empty or choose a random wrong name.\nName: "
+# )
+# print(env)
+# print(len(env))
+# if len(env) > 0:
+#     print("continue with " + env)
+#     os.system("conda activate" + env)
+# else:
+#     print("continue without environment")
 
 
 try:
@@ -70,12 +70,6 @@ except ImportError:
     os.system("pip install torch torchvision torchaudio")
 
 try:
-    import time
-except ImportError:
-    print("installing time")
-    os.system("pip install time")
-
-try:
     import matplotlib
 except ImportError:
     print("installing matplotlib")
@@ -86,12 +80,6 @@ try:
 except ImportError:
     print("installing pillow")
     os.system("pip install pillow")
-
-try:
-    import json
-except ImportError:
-    print("installing json")
-    os.system("pip install json")
 
 try:
     import torchmetrics
