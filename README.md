@@ -40,6 +40,6 @@ after running the forecast the app returns images like this:
 **[German Documentation](https://drive.google.com/file/d/1xma-3jHTS6dZDe0JcG4u4MDthTgEynG_/view?usp=sharing)**
 
 
-**[English Documentation](https://drive.google.com/file/d/19pABBdGhXleA2T1tDr-GP1gwyDyeFwrg/view?usp=sharing)**
+**[English Documentation](https://drive.google.com/file/d/1l_9HAHIb5zqXCkLy-65Eo4bC11lrHeD7/view?usp=drive_link)**
 
 <br>
