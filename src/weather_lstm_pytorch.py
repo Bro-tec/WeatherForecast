@@ -144,10 +144,41 @@ def create_own_Model(
     hours=True,
     position=True,
 ):
+    print(
+        "\nname:",
+        name,
+        "\ninput_count:",
+        input_count,
+        "\noutput_count:",
+        output_count,
+        "\nfeatures:",
+        features,
+        "\nindx:",
+        indx,
+        "\ncity_next:",
+        city_next,
+        "\nlearning_rate:",
+        learning_rate,
+        "\nlayer:",
+        layer,
+        "\nhiddensize:",
+        hiddensize,
+        "\nsequences:",
+        sequences,
+        "\ndropout:",
+        dropout,
+        "\nmonth:",
+        month,
+        "\nhours:",
+        hours,
+        "\nposition:",
+        position,
+    )
     # device = check_cuda()
     device = torch.device("cpu")
     if os.path.exists(f"./Models/{name}.pth"):
         print("Model does already exist")
+        return "error"
         # this code only exists to edit models, which didnt got parameters before
         # Run only once !!!
         # checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
@@ -222,7 +253,7 @@ def create_own_Model(
         # with open(f"./Models/{name}.pth", "wb") as f:
         #     pickle.dump(others, f)
         print("Model Created")
-    # return others
+    return "done"
 
 
 def create_history(features=[]):
@@ -421,10 +452,10 @@ def show_image(
     outs, hours=1, name="germany_points", name_ending=".png", checks=[], features=[]
 ):
     amount = int(len(outs) / hours)
-    print(amount, " = ", len(outs), " / ", hours)
-    im_list = []
+    # print(amount, " = ", len(outs), " / ", hours)
+    # im_list = []
     for h in range(hours):
-        print(outs[amount * h : amount * (h + 1)].shape)
+        # print(outs[amount * h : amount * (h + 1)].shape)
         im = Image.open("Images/Landkarte_Deutschland.png").convert("RGBA")
         stations = gld.load_stations_csv()
         stations["lat"] = [-x for x in stations["lat"].to_list()]
@@ -436,7 +467,7 @@ def show_image(
             on=["ID"],
             suffixes=("_x", ""),
         )
-        print(outs_stations.keys)
+        # print(outs_stations.keys)
         ims, ofs = load_images()
         # print(stations["lon"], stations["lat"])
         drw = ImageDraw.Draw(im)
@@ -809,42 +840,43 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
 
 
 def loss_indexer(indx, lnf):
-    print("indx: ", indx)
-    val1, val2, val3, val4, val5 = False, False, False, False, False
-    if True in [True for i in range(13) if indx[i] != 100]:
-        val1 = True
-    if indx[13] != 100:
-        val2 = True
-    if indx[14] != 100:
-        val3 = True
-    if indx[15] != 100:
-        val4 = True
-    if indx[16] != 100:
-        val5 = True
-    val_b_list = [val1, val2, val3, val4, val5]
-    ix = [
-        0,
-        1,
-        indx[13],
-        indx[13],
-        indx[14],
-        indx[14],
-        indx[15],
-        indx[15],
-        indx[16],
-        indx[16],
-    ]
-    remember = -1
-    for i in range(0, len(val_b_list)):
-        if val_b_list[i]:
-            if remember > 0:
-                ix[remember] = ix[i * 2]
-            remember = (i * 2) + 1
-        else:
-            ix[i * 2] = 0
-            ix[(i * 2) + 1] = 1
-    ix[remember] = lnf
-    return ix, val1, val2, val3, val4, val5
+    if len(indx) != 0 or lnf != 0:
+        val1, val2, val3, val4, val5 = False, False, False, False, False
+        if True in [True for i in range(13) if indx[i] != 100]:
+            val1 = True
+        if indx[13] != 100:
+            val2 = True
+        if indx[14] != 100:
+            val3 = True
+        if indx[15] != 100:
+            val4 = True
+        if indx[16] != 100:
+            val5 = True
+        val_b_list = [val1, val2, val3, val4, val5]
+        ix = [
+            0,
+            1,
+            indx[13],
+            indx[13],
+            indx[14],
+            indx[14],
+            indx[15],
+            indx[15],
+            indx[16],
+            indx[16],
+        ]
+        remember = -1
+        for i in range(0, len(val_b_list)):
+            if val_b_list[i]:
+                if remember > 0:
+                    ix[remember] = ix[i * 2]
+                remember = (i * 2) + 1
+            else:
+                ix[i * 2] = 0
+                ix[(i * 2) + 1] = 1
+        ix[remember] = lnf
+        return ix, val1, val2, val3, val4, val5
+    return 0, 0, 0, 0, 0, 0
 
 
 # unscaling the output because it usually doesnt get over 1
@@ -938,7 +970,7 @@ def scale_label(output, indx):
 
 def scale_features(output, indx, cities_next):
     global scales
-    print("cities_next: ", cities_next)
+    # print("cities_next: ", cities_next)
     for i in range(cities_next):
         for idx in range(len(indx) - 4):
             if indx[idx] != 100:
@@ -988,10 +1020,10 @@ def train_LSTM(
     y_train_tensors = Variable(torch.Tensor(y_train)).to(device)
     y_test_tensors = Variable(torch.Tensor(y_test)).to(device)
 
-    print("X_train_tensors", X_train_tensors.shape)
-    print("y_train_tensors", y_train_tensors.shape)
-    print("X_test_tensors", X_test_tensors.shape)
-    print("y_test_tensors", y_test_tensors.shape)
+    # print("X_train_tensors", X_train_tensors.shape)
+    # print("y_train_tensors", y_train_tensors.shape)
+    # print("X_test_tensors", X_test_tensors.shape)
+    # print("y_test_tensors", y_test_tensors.shape)
 
     X_train_tensors = scale_features(X_train_tensors, indx, cities_next)
     y_train_tensors = scale_label(y_train_tensors, indx)
@@ -1081,17 +1113,20 @@ def train_LSTM(
             torch.argmax(scaled_batch[:, ix[8] : ix[9]], dim=1),
         )
         # calculates the loss of the loss functions
-        loss = 0
+        loss_l = []
         if val1:
-            loss = loss + loss1
+            loss_l.append(loss1)
         if val2:
-            loss = loss + loss2
+            loss_l.append(loss2)
         if val3:
-            loss = loss + loss3
+            loss_l.append(loss3)
         if val4:
-            loss = loss + loss4
+            loss_l.append(loss4)
         if val5:
-            loss = loss + loss5
+            loss_l.append(loss5)
+
+        loss = sum(loss_l)
+
         loss.backward()
         # improve from loss, this is the actual backpropergation
         optimizer.step()
@@ -1171,7 +1206,7 @@ def train_LSTM(
         acc_list = acc_list + acc_list4
     if val5:
         acc_list = acc_list + acc_list5
-    my_acc = torch.FloatTensor().to(device)
+    my_acc = torch.FloatTensor(acc_list).to(device)
     my_acc = clean_torch(my_acc).mean()
     my_acc1 = torch.FloatTensor(acc_list1).to(device)
     my_acc1 = clean_torch(my_acc1).mean()
@@ -1198,14 +1233,14 @@ def train_LSTM(
 
     # showing training
     history_loss_i = 0
-    if my_loss != "NaN":
+    if str(my_loss).lower() != "nan":
         history["loss"].append(float(my_loss))
     else:
         history["loss"].append(history["loss"][-1])
 
     if val1:
         history_loss_i += 1
-        if my_loss1 != "NaN":
+        if str(my_loss1).lower() != "nan":
             history[f"loss{history_loss_i}"].append(float(my_loss1))
         else:
             history[f"loss{history_loss_i}"].append(
@@ -1214,7 +1249,7 @@ def train_LSTM(
 
     if val2:
         history_loss_i += 1
-        if my_loss2 != "NaN":
+        if str(my_loss2).lower() != "nan":
             history[f"loss{history_loss_i}"].append(float(my_loss2))
         else:
             history[f"loss{history_loss_i}"].append(
@@ -1223,7 +1258,7 @@ def train_LSTM(
 
     if val3:
         history_loss_i += 1
-        if my_loss3 != "NaN":
+        if str(my_loss3).lower() != "nan":
             history[f"loss{history_loss_i}"].append(float(my_loss3))
         else:
             history[f"loss{history_loss_i}"].append(
@@ -1232,7 +1267,7 @@ def train_LSTM(
 
     if val4:
         history_loss_i += 1
-        if my_loss4 != "NaN":
+        if str(my_loss4).lower() != "nan":
             history[f"loss{history_loss_i}"].append(float(my_loss4))
         else:
             history[f"loss{history_loss_i}"].append(
@@ -1241,7 +1276,7 @@ def train_LSTM(
 
     if val5:
         history_loss_i += 1
-        if my_loss5 != "NaN":
+        if str(my_loss5).lower() != "nan":
             history[f"loss{history_loss_i}"].append(float(my_loss5))
         else:
             history[f"loss{history_loss_i}"].append(
@@ -1249,13 +1284,13 @@ def train_LSTM(
             )
 
     history_acc_i = 0
-    if my_acc != "NaN":
+    if str(my_acc).lower() != "nan":
         history["accuracy"].append(float(my_acc))
     else:
         history["accuracy"].append(history["accuracy"][-1])
     if val1:
         history_acc_i += 1
-        if my_acc1 != "NaN":
+        if str(my_acc1).lower() != "nan":
             history[f"accuracy{history_acc_i}"].append(float(my_acc1))
         else:
             history[f"accuracy{history_acc_i}"].append(
@@ -1263,7 +1298,7 @@ def train_LSTM(
             )
     if val2:
         history_acc_i += 1
-        if my_acc2 != "NaN":
+        if str(my_acc2).lower() != "nan":
             history[f"accuracy{history_acc_i}"].append(float(my_acc2))
         else:
             history[f"accuracy{history_acc_i}"].append(
@@ -1271,7 +1306,7 @@ def train_LSTM(
             )
     if val3:
         history_acc_i += 1
-        if my_acc3 != "NaN":
+        if str(my_acc3).lower() != "nan":
             history[f"accuracy{history_acc_i}"].append(float(my_acc3))
         else:
             history[f"accuracy{history_acc_i}"].append(
@@ -1279,7 +1314,7 @@ def train_LSTM(
             )
     if val4:
         history_acc_i += 1
-        if my_acc4 != "NaN":
+        if str(my_acc4).lower() != "nan":
             history[f"accuracy{history_acc_i}"].append(float(my_acc4))
         else:
             history[f"accuracy{history_acc_i}"].append(
@@ -1287,7 +1322,7 @@ def train_LSTM(
             )
     if val5:
         history_acc_i += 1
-        if my_acc5 != "NaN":
+        if str(my_acc5).lower() != "nan":
             history[f"accuracy{history_acc_i}"].append(float(my_acc5))
         else:
             history[f"accuracy{history_acc_i}"].append(
@@ -1356,17 +1391,20 @@ def train_LSTM(
             val_loss_list4.append(float(val_loss4.item()))
             val_loss_list4.append(float(val_loss5.item()))
 
-            val_loss = 0
+            val_loss_l = []
             if val1:
-                val_loss = val_loss + val_loss1
+                val_loss_l.append(val_loss1)
             if val2:
-                val_loss = val_loss + val_loss2
+                val_loss_l.append(val_loss2)
             if val3:
-                val_loss = val_loss + val_loss3
+                val_loss_l.append(val_loss3)
             if val4:
-                val_loss = val_loss + val_loss4
+                val_loss_l.append(val_loss4)
             if val5:
-                val_loss = val_loss + val_loss5
+                val_loss_l.append(val_loss5)
+
+            val_loss = sum(val_loss_l)
+
             val_loss_list.append(float(val_loss.item()))
 
         size = val_torch_outputs.shape[0]
@@ -1463,14 +1501,14 @@ def train_LSTM(
     my_val_loss5 = clean_torch(my_val_loss5).mean()
 
     history_loss_i = 0
-    if my_val_loss != "NaN":
+    if str(my_val_loss).lower() != "nan":
         history["val_loss"].append(float(my_val_loss))
     else:
         history["val_loss"].append(history["val_loss"][-1])
 
     if val1:
         history_loss_i += 1
-        if my_val_loss1 != "NaN":
+        if str(my_val_loss1).lower() != "nan":
             history[f"val_loss{history_loss_i}"].append(float(my_val_loss1))
         else:
             history[f"val_loss{history_loss_i}"].append(
@@ -1479,7 +1517,7 @@ def train_LSTM(
 
     if val2:
         history_loss_i += 1
-        if my_val_loss2 != "NaN":
+        if str(my_val_loss2).lower() != "nan":
             history[f"val_loss{history_loss_i}"].append(float(my_val_loss2))
         else:
             history[f"val_loss{history_loss_i}"].append(
@@ -1488,7 +1526,7 @@ def train_LSTM(
 
     if val3:
         history_loss_i += 1
-        if my_val_loss3 != "NaN":
+        if str(my_val_loss3).lower() != "nan":
             history[f"val_loss{history_loss_i}"].append(float(my_val_loss3))
         else:
             history[f"val_loss{history_loss_i}"].append(
@@ -1497,7 +1535,7 @@ def train_LSTM(
 
     if val4:
         history_loss_i += 1
-        if my_val_loss4 != "NaN":
+        if str(my_val_loss4).lower() != "nan":
             history[f"val_loss{history_loss_i}"].append(float(my_val_loss4))
         else:
             history[f"val_loss{history_loss_i}"].append(
@@ -1506,7 +1544,7 @@ def train_LSTM(
 
     if val5:
         history_loss_i += 1
-        if my_val_loss5 != "NaN":
+        if str(my_val_loss5).lower() != "nan":
             history[f"val_loss{history_loss_i}"].append(float(my_val_loss5))
         else:
             history[f"val_loss{history_loss_i}"].append(
@@ -1514,14 +1552,14 @@ def train_LSTM(
             )
 
     history_acc_i = 0
-    if my_val_acc != "NaN":
+    if str(my_val_acc).lower() != "nan":
         history["val_accuracy"].append(float(my_val_acc))
     else:
         history["val_accuracy"].append(history["val_accuracy"][-1])
 
     if val1:
         history_acc_i += 1
-        if my_val_acc1 != "NaN":
+        if str(my_val_acc1).lower() != "nan":
             history[f"val_accuracy{history_acc_i}"].append(float(my_val_acc1))
         else:
             history[f"val_accuracy{history_acc_i}"].append(
@@ -1530,7 +1568,7 @@ def train_LSTM(
 
     if val2:
         history_acc_i += 1
-        if my_val_acc2 != "NaN":
+        if str(my_val_acc2).lower() != "nan":
             history[f"val_accuracy{history_acc_i}"].append(float(my_val_acc2))
         else:
             history[f"val_accuracy{history_acc_i}"].append(
@@ -1539,7 +1577,7 @@ def train_LSTM(
 
     if val3:
         history_acc_i += 1
-        if my_val_acc3 != "NaN":
+        if str(my_val_acc3).lower() != "nan":
             history[f"val_accuracy{history_acc_i}"].append(float(my_val_acc3))
         else:
             history[f"val_accuracy{history_acc_i}"].append(
@@ -1548,7 +1586,7 @@ def train_LSTM(
 
     if val4:
         history_acc_i += 1
-        if my_val_acc4 != "NaN":
+        if str(my_val_acc4).lower() != "nan":
             history[f"val_accuracy{history_acc_i}"].append(float(my_val_acc4))
         else:
             history[f"val_accuracy{history_acc_i}"].append(
@@ -1557,7 +1595,7 @@ def train_LSTM(
 
     if val5:
         history_acc_i += 1
-        if my_val_acc5 != "NaN":
+        if str(my_val_acc5).lower() != "nan":
             history[f"val_accuracy{history_acc_i}"].append(float(my_val_acc5))
         else:
             history[f"val_accuracy{history_acc_i}"].append(
@@ -1636,6 +1674,7 @@ def plotting_Prediction_hourly(
 
 # aktively used reshaping and predicting
 def prediction(model, train, label, device, features=[], indx=[], cities_next=4):
+    ix, val1, val2, val3, val4, val5 = loss_indexer(indx, len(features))
     X_test_tensors = torch.reshape(
         Variable(torch.Tensor(train).to(device)).to(device),
         (1, train.shape[0], train.shape[1]),
@@ -1654,6 +1693,7 @@ def prediction(model, train, label, device, features=[], indx=[], cities_next=4)
     val_acc_list2 = []
     val_acc_list3 = []
     val_acc_list4 = []
+    val_acc_list5 = []
     output = 0
     scaled_batch = 0
     with torch.no_grad():
@@ -1674,26 +1714,61 @@ def prediction(model, train, label, device, features=[], indx=[], cities_next=4)
         compare = (
             (torch.pow(val_torch_outputs[:, :3] - scaled_batch[:, :3], 2)).float().sum()
         )
+
         if compare <= 0:
             return 100
         else:
             val_acc_list1.append(100 / (1 + (compare / size * 3)))
-        inds_o_direction = torch.argmax(val_torch_outputs[:, 3:12], dim=1)
-        inds_s_direction = torch.argmax(scaled_batch[:, 3:12], dim=1)
-        inds_o_icon = torch.argmax(val_torch_outputs[:, 12:33], dim=1)
-        inds_s_icon = torch.argmax(scaled_batch[:, 12:33], dim=1)
-        inds_o_condition = torch.argmax(val_torch_outputs[:, 33:54], dim=1)
-        inds_s_condition = torch.argmax(scaled_batch[:, 33:54], dim=1)
+        inds_o_direction = torch.argmax(val_torch_outputs[:, ix[2] : ix[3]], dim=1)
+        inds_s_direction = torch.argmax(scaled_batch[:, ix[2] : ix[3]], dim=1)
+        inds_o_g_direction = torch.argmax(val_torch_outputs[:, ix[4] : ix[5]], dim=1)
+        inds_s_g_direction = torch.argmax(scaled_batch[:, ix[4] : ix[5]], dim=1)
+        inds_o_icon = torch.argmax(val_torch_outputs[:, ix[6] : ix[7]], dim=1)
+        inds_s_icon = torch.argmax(scaled_batch[:, ix[6] : ix[7]], dim=1)
+        inds_o_condition = torch.argmax(val_torch_outputs[:, ix[8] : ix[9]], dim=1)
+        inds_s_condition = torch.argmax(scaled_batch[:, ix[8] : ix[9]], dim=1)
         val_acc_list2.append(
             (inds_o_direction == inds_s_direction).sum().item() / size * 100
         )
-        val_acc_list3.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
-        val_acc_list4.append(
+        val_acc_list3.append(
+            (inds_o_direction == inds_s_direction).sum().item() / size * 100
+        )
+        val_acc_list4.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
+        val_acc_list5.append(
             (inds_o_condition == inds_s_condition).sum().item() / size * 100
         )
-        my_val_acc = torch.FloatTensor(
-            val_acc_list1 + val_acc_list2 + val_acc_list3 + val_acc_list4
-        ).to(device)
+
+        # if compare <= 0:
+        #     return 100
+        # else:
+        #     val_acc_list1.append(100 / (1 + (compare / size * 3)))
+        # inds_o_direction = torch.argmax(val_torch_outputs[:, 3:12], dim=1)
+        # inds_s_direction = torch.argmax(scaled_batch[:, 3:12], dim=1)
+        # inds_o_icon = torch.argmax(val_torch_outputs[:, 12:33], dim=1)
+        # inds_s_icon = torch.argmax(scaled_batch[:, 12:33], dim=1)
+        # inds_o_condition = torch.argmax(val_torch_outputs[:, 33:54], dim=1)
+        # inds_s_condition = torch.argmax(scaled_batch[:, 33:54], dim=1)
+        # val_acc_list2.append(
+        #     (inds_o_direction == inds_s_direction).sum().item() / size * 100
+        # )
+        # val_acc_list3.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
+        # val_acc_list4.append(
+        #     (inds_o_condition == inds_s_condition).sum().item() / size * 100
+        # )
+
+        val_acc_list = []
+        if val1:
+            val_acc_list = val_acc_list + val_acc_list1
+        if val2:
+            val_acc_list = val_acc_list + val_acc_list2
+        if val3:
+            val_acc_list = val_acc_list + val_acc_list3
+        if val4:
+            val_acc_list = val_acc_list + val_acc_list4
+        if val5:
+            val_acc_list = val_acc_list + val_acc_list5
+
+        my_val_acc = torch.FloatTensor(val_acc_list).to(device)
         my_val_acc = clean_torch(my_val_acc).mean()
         my_val_acc1 = torch.FloatTensor(val_acc_list1).to(device)
         my_val_acc1 = clean_torch(my_val_acc1).mean()
@@ -1703,6 +1778,8 @@ def prediction(model, train, label, device, features=[], indx=[], cities_next=4)
         my_val_acc3 = clean_torch(my_val_acc3).mean()
         my_val_acc4 = torch.FloatTensor(val_acc_list4).to(device)
         my_val_acc4 = clean_torch(my_val_acc4).mean()
+        my_val_acc5 = torch.FloatTensor(val_acc_list5).to(device)
+        my_val_acc5 = clean_torch(my_val_acc5).mean()
     return output
 
 
@@ -1794,6 +1871,7 @@ def future_prediction(model_name, device, id=[], checks=[], hours=1, show_all=Tr
         prediction=prediction,
         show_all=show_all,
         ids=id,
+        next_city_amount=others["city_next"],
     )
     output_np = unscale_output(
         outputs,
@@ -1851,33 +1929,33 @@ def forecast_weather(model_name, h, ids, show_all, name="", checks=[], features=
     show_image(outs, hours=int(h), name=name, checks=checks, features=features)
 
 
-if __name__ == "__main__":
-    device = check_cuda()
-    h = 2
-    outs = future_prediction(
-        "working",
-        device,
-        id=[
-            "00020",
-            "00044",
-            # "00103",
-            # "00183",
-            # "00644",
-            # "00896",
-            # "01046",
-            # "14157",
-            # "15013",
-            # "15000",
-            # "15120",
-            # "07489",
-            # "13669",
-            # "13714",
-            # "13952",
-        ],  # , "00096", "00294", "00757"]
-        hours=h,
-        show_all=False,
-    )
-    # print(outs.keys())
-    print(outs.shape)
-    # outs = gld.load_stations_csv()
-    im = show_image(outs, hours=h)
+# if __name__ == "__main__":
+#     device = check_cuda()
+#     h = 2
+#     outs = future_prediction(
+#         "working",
+#         device,
+#         id=[
+#             "00020",
+#             "00044",
+#             # "00103",
+#             # "00183",
+#             # "00644",
+#             # "00896",
+#             # "01046",
+#             # "14157",
+#             # "15013",
+#             # "15000",
+#             # "15120",
+#             # "07489",
+#             # "13669",
+#             # "13714",
+#             # "13952",
+#         ],  # , "00096", "00294", "00757"]
+#         hours=h,
+#         show_all=False,
+#     )
+#     # print(outs.keys())
+#     print(outs.shape)
+#     # outs = gld.load_stations_csv()
+#     im = show_image(outs, hours=h)

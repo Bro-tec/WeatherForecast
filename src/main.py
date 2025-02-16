@@ -39,9 +39,10 @@ def main(page: Page):
         if int(tabs.selected_index) == 0:
             main_col.height = 1000
         elif int(tabs.selected_index) == 1:
-            main_col.height = 700
+            main_col.height = 1200
         else:
-            main_col.height = 2000
+            main_col.height = 2200
+        main_col.width = page.width
         page.update()
 
     page.on_scroll = resize_tab
@@ -105,7 +106,7 @@ def main(page: Page):
             and sequence_slider.value != 0
             and dropout_slider.value != 0
         ):
-            error_text.visible = False
+            error_text3.value = ""
             feature, indx, m, h, p = gld.create_feature(
                 c_precipitation.value,
                 c_precipitation_probability.value,
@@ -135,9 +136,9 @@ def main(page: Page):
                 ext += 1
             if p:
                 ext += 3
-            wlp.create_own_Model(
+            err = wlp.create_own_Model(
                 str(model_name.value),
-                int((len(feature) * (city_next_slider.value) + 1) + ext),
+                int((len(feature) * (city_next_slider.value + 1)) + ext),
                 len(feature),
                 feature,
                 indx,
@@ -151,16 +152,20 @@ def main(page: Page):
                 hours=h,
                 position=p,
             )
-            dd_models.options.append(dropdown.Option(str(model_name.value)))
+            if str(err) == "error":
+                error_text3.value = "Error: Name alreaedy exists"
+            else:
+                dd_models.options.append(dropdown.Option(str(model_name.value)))
+            page.update()
         else:
-            error_text.visible = True
+            error_text3.value = "Error: Somewhere is an invalid value"
             page.update()
 
     def train_model_switched(e):
-        print("switch_train", switch_train.value)
         if switch_train.value:
             if (
-                len(str(dd_models.value)) > 0
+                str(dd_models.value) != ""
+                and dd_models.value != None
                 and redo_slider.value != 0
                 and epoch_slider.value != 0
                 and batch_slider.value != 0
@@ -168,7 +173,7 @@ def main(page: Page):
                 # try:
                 if len(str(skip_train.value)) <= 0:
                     skip_train.value = 0
-                error_text.visible = False
+                error_text2.value = ""
                 device = wlp.check_cuda()
                 model, optimizer, history, others = wlp.load_own_Model(
                     str(dd_models.value), device
@@ -176,7 +181,7 @@ def main(page: Page):
                 for train, label, i, r in gld.gen_trainDataHourly_Async(
                     skip_days=int(skip_train.value),
                     seq=others["sequences"],
-                    max_batch=math.ceil(others["sequences"] / 24) * 24,
+                    max_batch=(math.floor(others["sequences"] / 24) + 1) * 24,
                     redos=int(redo_slider.value),
                     next_city_amount=others["city_next"],
                     feature_labels=list(others["features"]),
@@ -184,52 +189,55 @@ def main(page: Page):
                     hours=others["hours"],
                     position=others["position"],
                 ):
-                    for epoch in range(int(epoch_slider.value)):
-                        model, history, metrics, optimizer = wlp.train_LSTM(
-                            str(dd_models.value),
-                            train,
-                            label,
-                            model,
-                            optimizer,
-                            others["indx"],
-                            history,
-                            device,
-                            epoch_count=int(epoch_slider.value),
-                            batchsize=int(batch_slider.value),
-                            cities_next=int(others["city_next"]),
-                        )
-                        wlp.save_own_Model(
-                            str(dd_models.value), history, model, optimizer, device
-                        )
-                        wlp.plotting_hist(
-                            history,
-                            metrics,
-                            str(dd_models.value),
-                            min_amount=int(epoch_slider.value),
-                            epoche=epoch,
-                        )
-                        train_images.controls.clear()
-                        plt = ["accuracy", "loss", "matrix"]
-                        for i in range(3):
-                            forecast_images.controls.append(
-                                Image(
-                                    src=f"Plots/{str(dd_models.value)}_plot_{plt[i]}.png",
-                                    width=724,
-                                    height=1024,
-                                    fit=ImageFit.NONE,
-                                    repeat=ImageRepeat.NO_REPEAT,
-                                    border_radius=border_radius.all(10),
-                                )
+                    if train.shape[0] > 0:
+                        for epoch in range(int(epoch_slider.value)):
+                            model, history, metrics, optimizer = wlp.train_LSTM(
+                                str(dd_models.value),
+                                train,
+                                label,
+                                model,
+                                optimizer,
+                                others["indx"],
+                                history,
+                                device,
+                                epoch_count=int(epoch_slider.value),
+                                batchsize=int(batch_slider.value),
+                                cities_next=int(others["city_next"]),
                             )
-                        page.update()
+                            wlp.save_own_Model(
+                                str(dd_models.value), history, model, optimizer, device
+                            )
+                            wlp.plotting_hist(
+                                history,
+                                metrics,
+                                str(dd_models.value),
+                                min_amount=int(epoch_slider.value),
+                                epoche=epoch,
+                            )
+                            train_images.controls.clear()
+                            plt = ["accuracy", "loss", "matrix"]
+                            for i in range(3):
+                                train_images.controls.append(
+                                    Image(
+                                        src=f"Plots/{str(dd_models.value)}_plot_{plt[i]}.png",
+                                        width=500,
+                                        height=1000,
+                                        fit=ImageFit.FILL,
+                                        repeat=ImageRepeat.NO_REPEAT,
+                                        border_radius=border_radius.all(10),
+                                    )
+                                )
+                            page.update()
+                            if not switch_train.value:
+                                return
+                    else:
                         if not switch_train.value:
-                            print(switch_train.value)
                             return
                 # except ValueError:
                 #     print(ValueError)
                 #     error_text.visible = True
             else:
-                error_text.visible = True
+                error_text2.value = "Error: Somewhere is an invalid value"
 
             page.update()
 
@@ -254,9 +262,9 @@ def main(page: Page):
         page.update()
 
     titel = Text("Weather Forecast", size=50)
-    error_text = Text(
-        "Error: Somewhere is an invalid value", size=50, color="red", visible=False
-    )
+    error_text1 = Text("", size=20, color="red")
+    error_text2 = Text("", size=20, color="red")
+    error_text3 = Text("", size=20, color="red")
     switch_train = Switch(label="Train", value=False, on_change=train_model_switched)
     b_add = ElevatedButton(text="Add", on_click=add_clicked)
     b_sub = ElevatedButton(text="Sub Last", on_click=sub_clicked)
@@ -264,7 +272,14 @@ def main(page: Page):
     create_model_button = ElevatedButton(
         text="Create Model", on_click=create_model_clicked
     )
-    lv = ListView(expand=1, spacing=10, padding=20, auto_scroll=True)
+    lv = ListView(
+        expand=1,
+        spacing=10,
+        padding=20,
+        height=200,
+        width=page.width - 300,
+        auto_scroll=True,
+    )
     hours_slider = Slider(min=0, max=1000, divisions=1000, label="{value} hours")
     epoch_slider = Slider(min=0, max=100, divisions=100, label="{value} epochs")
     batch_slider = Slider(min=0, max=10000, divisions=100, label="batchsize of {value}")
@@ -381,7 +396,7 @@ def main(page: Page):
             c_show_all,
             checks,
             Row([forecast_name, forecast_button]),
-            error_text,
+            error_text1,
             forecast_images,
         ],
     )
@@ -400,7 +415,7 @@ def main(page: Page):
             epoch_slider,
             Text("Choose how big the batchsize should be", size=20),
             batch_slider,
-            error_text,
+            error_text2,
             switch_train,
             train_images,
         ]
@@ -423,7 +438,7 @@ def main(page: Page):
             dropout_text,
             dropout_slider,
             create_model_button,
-            error_text,
+            error_text3,
             # Text("Set the outputs", size=20),
         ],
     )
@@ -441,7 +456,7 @@ def main(page: Page):
         ],
     )
 
-    main_col = Column([titel, tabs], height=1000, expand=True)
+    main_col = Column([titel, tabs], height=1000, width=page.width, expand=True)
 
     page.add(
         main_col,

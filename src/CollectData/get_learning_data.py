@@ -332,36 +332,42 @@ async def DataHourlyAsync(
 
     # print("continous_data: ", len(continous_data.keys()))
 
-    print(
-        "continous_hour_range: ",
-        continous_hour_range,
-        "label_hour_range: ",
-        label_hour_range,
-    )
+    # print(
+    #     "continous_hour_range: ",
+    #     continous_hour_range,
+    #     "label_hour_range: ",
+    #     label_hour_range,
+    # )
+    tb = True
     # Iterate through the keys of the continuous data dictionary
     for k in tqdm(continous_data.keys(), total=len(continous_data.keys())):
         if continous_data[k].shape[0] >= continous_hour_range:
             ids.append(k)
-            extra = 1
+            # extra = 1
+            # if label:
+            #     extra = -1
+
+            if tb:
+                # print("j loop:", continous_data[k].shape[0] - label_hour_range - 1)
+                # print("continous_data[k]:", continous_data[k].shape[0])
+                tb = False
             if label:
-                extra = -1
-            print("j loop: ", continous_data[k].shape[0] - label_hour_range + extra)
-            print("continous_data[k]:", continous_data[k].shape[0])
-            for j in range(continous_data[k].shape[0] - label_hour_range + extra):
-                train_list.append(continous_data[k][j : j + label_hour_range])
-                if label:
+                for j in range(continous_data[k].shape[0] - label_hour_range - 1):
+                    train_list.append(continous_data[k][j : j + label_hour_range])
                     # print(continous_data[k].shape, j + label_hour_range)
                     label_list.append(
                         continous_data[k][j + label_hour_range][
                             [i for i in range(len(feature_labels))]
                         ]
                     )
+            else:
+                train_list.append(continous_data[k])
 
     # Convert lists to numpy arrays in a single step
     train_np = np.array(train_list)
     label_np = np.array(label_list)
     # print("trs_List: ", len(train_list), len(label_list))
-    print("trs: ", train_np.shape, label_np.shape)
+    # print("trs: ", train_np.shape, label_np.shape)
     return id_list, train_np, label_np, ids
 
 
@@ -457,6 +463,7 @@ def gen_trainDataHourly_Async(
                         hours=hours,
                         position=position,
                         feature_labels=feature_labels,
+                        label=True,
                     )
                 )
                 # x,y,z = asyncio.run(DataHourlyAsync(cityP[s*i:], cityP, date, r_mode=True, minTime=minTime, duration=duration.days))
@@ -467,11 +474,13 @@ def gen_trainDataHourly_Async(
                         cityP,
                         date,
                         continous_hour_range=max_batch,
+                        label_hour_range=seq,
                         next_city_amount=next_city_amount,
                         month=month,
                         hours=hours,
                         position=position,
                         feature_labels=feature_labels,
+                        label=True,
                     )
                 )
                 # x,y,z = asyncio.run(DataHourlyAsync(cityP[s*i:s*(i+1)], cityP, date, r_mode=True, minTime=minTime, duration=duration.days))
@@ -591,6 +600,7 @@ def continue_prediction(
     extended_id_list = id_list.copy()
     for hr in range(1, h + 1):
         for i, id in enumerate(id_list):
+            # print("hr: ", hr, "\\", h, " id: ", i + 1, "\\", len(id_list))
             if hr >= 24:
                 time_list.append(time_list[i] + (hr % 24))
             else:
@@ -599,43 +609,46 @@ def continue_prediction(
 
             close = asyncio.run(getCities(load_stations_by_IDs(id_list), id))
             close_list = close["ID"].to_list()
-            # print(id, close["ID"], "\n", close_list[0], close_list[1])
+            # print(id, len(close_list))
             # print("vals:", len(vals), ", ", len(id_list), ", ", len(extended_id_list))
-            other_seq = output_list[
-                (hr - 1) * len(id_list) + id_list.index(close_list[0])
-            ]
-            for nca in range(1, next_city_amount):
-                other_seq = torch.cat(
-                    [
-                        output_list[
-                            (hr - 1) * len(id_list) + id_list.index(close_list[i])
+            if len(close_list) >= next_city_amount:
+                other_seq = output_list[
+                    (hr - 1) * len(id_list) + id_list.index(close_list[0])
+                ]
+                for nca in range(1, next_city_amount):
+                    other_seq = torch.cat(
+                        [
+                            other_seq,
+                            output_list[
+                                (hr - 1) * len(id_list) + id_list.index(close_list[nca])
+                            ],
                         ],
+                        dim=0,
+                    )
+                    # print("nca: ", nca, other_seq.shape)
+                new_seq = torch.cat(
+                    [
+                        output_list[(hr - 1) * len(id_list) + i],
+                        other_seq,
+                        torch.Tensor([time_list[(hr - 1) * len(id_list) + i] + 1]).to(
+                            device
+                        ),
+                        torch.Tensor([month]).to(device),
+                        torch.Tensor(vals[i]).to(device),
                     ],
                     dim=0,
                 )
-            new_seq = torch.cat(
-                [
-                    output_list[(hr - 1) * len(id_list) + i],
-                    other_seq,
-                    torch.Tensor([time_list[(hr - 1) * len(id_list) + i] + 1]).to(
-                        device
-                    ),
-                    torch.Tensor([month]).to(device),
-                    torch.Tensor(vals[i]).to(device),
-                ],
-                dim=0,
-            )
-            # print(continous_data[id].shape, np.array([new_seq.tolist()]).shape)
-            print(new_seq.shape)
-            continous_data[id] = np.concatenate(
-                [continous_data[id], np.array([new_seq.tolist()])], axis=0
-            )
-            continous_data[id] = continous_data[id][1:]
-            # print(new_seq.shape)
-            # print(new_seq[-5], new_seq[-4], new_seq[-3], new_seq[-2], new_seq[-1])
-            output = prediction(model, continous_data[id], [], device)
-            extended_id_list.append(id)
-            output_list = torch.cat([output_list, output.detach().clone()], dim=0)
+                continous_data[id] = np.concatenate(
+                    [continous_data[id], np.array([new_seq.tolist()])], axis=0
+                )
+                continous_data[id] = continous_data[id][1:]
+                # print(new_seq.shape)
+                # print(new_seq[-5], new_seq[-4], new_seq[-3], new_seq[-2], new_seq[-1])
+                output = prediction(
+                    model, continous_data[id], [], device, cities_next=next_city_amount
+                )
+                extended_id_list.append(id)
+                output_list = torch.cat([output_list, output.detach().clone()], dim=0)
     if len(ids) > 0 and not show_all:
         gi = get_indices(extended_id_list, ids)
         print(extended_id_list, ids)
@@ -697,28 +710,28 @@ def create_feature(
     hours,
     pos,
 ):
-    print(
-        precipitation,
-        precipitation_probability,
-        precipitation_probability_6h,
-        pressure_msl,
-        temperature,
-        sunshine,
-        wind_direction,
-        wind_speed,
-        cloud_cover,
-        dew_point,
-        wind_gust_direction,
-        wind_gust_speed,
-        condition,
-        relative_humidity,
-        visibility,
-        solar,
-        icon,
-        months,
-        hours,
-        pos,
-    )
+    # print(
+    #     precipitation,
+    #     precipitation_probability,
+    #     precipitation_probability_6h,
+    #     pressure_msl,
+    #     temperature,
+    #     sunshine,
+    #     wind_direction,
+    #     wind_speed,
+    #     cloud_cover,
+    #     dew_point,
+    #     wind_gust_direction,
+    #     wind_gust_speed,
+    #     condition,
+    #     relative_humidity,
+    #     visibility,
+    #     solar,
+    #     icon,
+    #     months,
+    #     hours,
+    #     pos,
+    # )
     features = []
     indx = [
         100,
