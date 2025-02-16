@@ -7,11 +7,18 @@ This Code focused to predict data based on weather-data in germany using DWD dat
 The data gets retrieverd using Brightsky Api.
 
 
+## Load requirements.
+Before starting we need to download the requirements for the app using:
+<br>
+```ruby
+pip install -r requirements.txt
+```
 <br>
 
 ## Start the App.
 There are two ways to start the app. <br>
-Run the main.bat         or         type flet run in the WeatherForecast folder in your chosen command prompt
+Run the main.bat         or         type ```flet run``` in the WeatherForecast folder in your chosen command prompt
+<br>
 <br>
 **![Image](https://github.com/user-attachments/assets/3d520ef0-0c55-453a-80f2-a916689cb379)**
 
