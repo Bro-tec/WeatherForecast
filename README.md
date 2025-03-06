@@ -37,17 +37,9 @@ after running the forecast the app returns images like this:
 
 ## Documentation
 
-**[German Documentation](https://drive.google.com/file/d/17Y7CCb8q_BkaXafY_krfXaMJ5eqAW4U2/view?usp=sharing)**
+**[German Documentation](https://drive.google.com/file/d/1xma-3jHTS6dZDe0JcG4u4MDthTgEynG_/view?usp=sharing)**
 
 
-**[English Documentation](https://drive.google.com/file/d/19pABBdGhXleA2T1tDr-GP1gwyDyeFwrg/view?usp=sharing)**
+**[English Documentation](https://drive.google.com/file/d/1l_9HAHIb5zqXCkLy-65Eo4bC11lrHeD7/view?usp=drive_link)**
 
 <br>
-
-## Presentation
-
-**[German Presentation](https://docs.google.com/presentation/d/1Tj1JBiOdr7fzXeiFHC5kwvETWVYObkYu/edit#slide=id.p1)**
-
-
-**[German Presentation (PDF)](https://drive.google.com/drive/folders/1a8JoFlJ9xNWByvjP25ytz66WRIDUyy0E)** 
-
