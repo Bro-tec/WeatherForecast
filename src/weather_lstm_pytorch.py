@@ -8,14 +8,7 @@ from datetime import timedelta as td
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
-import pickle
-
-# import pickle
-
-# from sklearn import preprocessing as pr
 from sklearn.model_selection import train_test_split
-
-# from sklearn.metrics import accuracy_score
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -24,7 +17,6 @@ from torchmetrics.classification import MulticlassConfusionMatrix
 import math
 import warnings
 
-# import random
 
 plt.switch_backend("agg")
 
@@ -174,33 +166,10 @@ def create_own_Model(
         "\nposition:",
         position,
     )
-    # device = check_cuda()
     device = torch.device("cpu")
     if os.path.exists(f"./Models/{name}.pth"):
         print("Model does already exist")
         return "error"
-        # this code only exists to edit models, which didnt got parameters before
-        # Run only once !!!
-        # checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
-        # checkpoint["input_count"] = input_count
-        # checkpoint["output_count"] = output_count
-        # checkpoint["learning_rate"] = learning_rate
-        # checkpoint["layer"] = layer
-        # checkpoint["hiddensize"] = hiddensize
-        # checkpoint["sequences"] = sequences
-        # checkpoint["dropout"] = dropout
-        # checkpoint["batchsize"] = batchsize
-        # checkpoint["month"] = month
-        # checkpoint["hours"] = hours
-        # checkpoint["position"] = position
-        # checkpoint["features"] = features
-        # checkpoint["indx"] = indx
-        # checkpoint["city_next"] = city_next
-        # print(checkpoint.keys())
-        # torch.save(
-        #     checkpoint,
-        #     f"./Models/{name}.pth",
-        # )
     else:
         model = PyTorch_LSTM(
             input_count,
@@ -231,27 +200,12 @@ def create_own_Model(
             "hours": hours,
             "position": position,
         }
-        # others["input_count"] = input_count
-        # others["output_count"] = output_count
-        # others["features"] = features
-        # others["indx"] = indx
-        # others["city_next"] = city_next
-        # others["learning_rate"] = learning_rate
-        # others["layer"] = layer
-        # others["hiddensize"] = hiddensize
-        # others["sequences"] = sequences
-        # others["dropout"] = dropout
-        # others["month"] = month
-        # others["hours"] = hours
-        # others["position"] = position
 
         torch.save(
             others,
             f"./Models/{name}.pth",
         )
 
-        # with open(f"./Models/{name}.pth", "wb") as f:
-        #     pickle.dump(others, f)
         print("Model Created")
     return "done"
 
@@ -319,24 +273,6 @@ def load_own_Model(name, device):
         "loss": [0],
         "val_accuracy": [0],
         "val_loss": [0],
-        # "accuracy1": [0],
-        # "loss1": [0],
-        # "val_accuracy1": [0],
-        # "val_loss1": [0],
-        # "accuracy2": [0],
-        # "loss2": [0],
-        # "val_accuracy2": [0],
-        # "val_loss2": [0],
-        # "accuracy3": [0],
-        # "loss3": [0],
-        # "val_accuracy3": [0],
-        # "val_loss3": [0],
-        # "accuracy4": [0],
-        # "loss4": [0],
-        # "val_accuracy4": [0],
-        # "val_loss4": [0],
-        # "argmax_accuracy": [0],
-        # "val_argmax_accuracy": [0],
     }
     model = {"haha": [1, 2, 3]}
     optimizer = {"haha": [1, 2, 3]}
@@ -360,7 +296,6 @@ def load_own_Model(name, device):
             history = json.load(f)
 
     model.train()
-    # metric = MulticlassConfusionMatrix(num_classes=21).to(device)
     return model, optimizer, history, others
 
 
@@ -389,7 +324,6 @@ def cropping(image, x_list, y_list):
 
 def points(image, drw, df, ims, ofs, checks=[], features=[]):
     for i, d in df.iterrows():
-        # print(d)
         drw.ellipse(
             xy=(d.lon - 3, d.lat - 3, d.lon + 3, d.lat + 3),
             fill="red",
@@ -397,7 +331,6 @@ def points(image, drw, df, ims, ofs, checks=[], features=[]):
         if i == 0:
             font = ImageFont.truetype("arial.ttf", 20)
             drw.text((550, 15), str(d.Time) + " Uhr", (0, 0, 0), font=font)
-        # print(ofs)
         if "icon" in d.keys():
             if d.icon == None:
                 d.icon = "None"
@@ -422,7 +355,6 @@ def points(image, drw, df, ims, ofs, checks=[], features=[]):
 
 
 def l_to_px(list, rs, ps):
-    # print("1:", list)
     min_l = min(list)
     max_l = max(list) - min_l
     print(min_l, max_l)
@@ -430,7 +362,6 @@ def l_to_px(list, rs, ps):
     print((list[0] - min_l) / max_l)
     print(rs)
     list = [((x - min_l) / max_l * rs) + ps for x in list]
-    # print("2:", list)
     return list
 
 
@@ -444,7 +375,6 @@ def load_images():
         for of in onlyfiles
     ]
     onlyfiles = [of.replace(".png", "") for of in onlyfiles]
-    # print(onlyfiles)
     return ims, onlyfiles
 
 
@@ -452,10 +382,7 @@ def show_image(
     outs, hours=1, name="germany_points", name_ending=".png", checks=[], features=[]
 ):
     amount = int(len(outs) / hours)
-    # print(amount, " = ", len(outs), " / ", hours)
-    # im_list = []
     for h in range(hours):
-        # print(outs[amount * h : amount * (h + 1)].shape)
         im = Image.open("Images/Landkarte_Deutschland.png").convert("RGBA")
         stations = gld.load_stations_csv()
         stations["lat"] = [-x for x in stations["lat"].to_list()]
@@ -467,25 +394,17 @@ def show_image(
             on=["ID"],
             suffixes=("_x", ""),
         )
-        # print(outs_stations.keys)
         ims, ofs = load_images()
-        # print(stations["lon"], stations["lat"])
         drw = ImageDraw.Draw(im)
 
         im = points(im, drw, outs_stations, ims, ofs, checks=checks, features=features)
         im.save(f"Forecasts/{name}_{h}{name_ending}", "PNG")
-
-        # im = cropping(im, outs_stations["lon"], outs_stations["lat"])
-        # im_list.append(im)
-        # im.show()
-    # return im_list
 
 
 def approximation(all):
     x = np.arange(0, len(all))
     y = list(all)
     [b, m] = np.polynomial.polynomial.polyfit(x, y, 1)
-    # print("b: ", b, ", m: ", m)
     return b, m
 
 
@@ -588,9 +507,6 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
         ax[p].plot(history["accuracy5"][1:])
         ax[p].plot(history["val_accuracy5"][1:])
         ax[p].grid(axis="y")
-    # if len(history["accuracy"]) > min_amount:
-    #     ax[2].plot(history["accuracy"][(-1 * min_amount) :])
-    #     ax[3].plot(history["val_accuracy"][(-1 * min_amount) :])
     ax[0].grid(axis="y")
     ax[1].grid(axis="y")
     ax[0].legend(
@@ -598,7 +514,6 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
             "train",
             "test",
         ],
-        # ["svm train", "svm test", "rf train", "rf test"],
         loc="upper left",
     )
     ax[1].legend(
@@ -683,8 +598,6 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
     # summarize history for loss
     fig, ax = plt.subplots(plots, figsize=(20, 12), sharey="row")
 
-    # ax[0].plot(history["loss"][1:])
-    # ax[0].plot(history["val_loss"][1:])
     if "loss1" in history:
         ax[0].plot(history["loss1"][1:])
         ax[0].plot(history["val_loss1"][1:])
@@ -709,7 +622,6 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
         [
             "train / Epoche:" + str(epoche + 1),
             "test",
-            # "linear train: {:.1f} + {:.5f}x".format(b * 10, m),
             "linear train: {:.5f}x".format(m),
         ],
         loc="upper left",
@@ -724,7 +636,6 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
             [
                 "train / Epoche:" + str(epoche + 1),
                 "test",
-                # "linear train: {:.1f} + {:.5f}x".format(b * 10, m),
                 "linear train: {:.5f}x".format(m1),
             ],
             loc="upper left",
@@ -739,7 +650,6 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
             [
                 "train / Epoche:" + str(epoche + 1),
                 "test",
-                # "linear train: {:.1f} + {:.5f}x".format(b * 10, m),
                 "linear train: {:.5f}x".format(m2),
             ],
             loc="upper left",
@@ -754,7 +664,6 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
             [
                 "train / Epoche:" + str(epoche + 1),
                 "test",
-                # "linear train: {:.1f} + {:.5f}x".format(b * 10, m),
                 "linear train: {:.5f}x".format(m3),
             ],
             loc="upper left",
@@ -769,7 +678,6 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
             [
                 "train / Epoche:" + str(epoche + 1),
                 "test",
-                # "linear train: {:.1f} + {:.5f}x".format(b * 10, m),
                 "linear train: {:.5f}x".format(m4),
             ],
             loc="upper left",
@@ -784,7 +692,6 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
             [
                 "train / Epoche:" + str(epoche + 1),
                 "test",
-                # "linear train: {:.1f} + {:.5f}x".format(b * 10, m),
                 "linear train: {:.5f}x".format(m5),
             ],
             loc="upper left",
@@ -817,8 +724,6 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
         ax[j, k].title.set_text(metric_names[i])
         metrics[i].plot(
             ax=ax[0, 0],
-            # cmap="Blues",
-            # colorbar=False,
         )
         ax[j, k].xaxis.set_ticklabels(directions)
         ax[j, k].yaxis.set_ticklabels(directions)
@@ -828,8 +733,6 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
         ax[j, k].title.set_text(metric_names[i])
         metrics[i].plot(
             ax=ax[j, k],
-            # cmap="Blues",
-            # colorbar=False,
         )
         ax[j, k].xaxis.set_ticklabels(icons)
         ax[j, k].yaxis.set_ticklabels(icons)
@@ -917,12 +820,6 @@ def unscale_output(output, ids, times, continueing=False, features=[], indx=[]):
     ]
     output[:, 0] *= 100
     print(output[:, 1])
-    # for o in range(output.shape[0]):
-    #     if output[o, 1] <= 0:
-    #         output[o, 1] = 0
-    #     else:
-    #         output[o, 1] *= 100
-    # output[:, 2] *= 10000
     global scales
     for idx in range(len(indx) - 4):
         if indx[idx] != 100:
@@ -970,7 +867,6 @@ def scale_label(output, indx):
 
 def scale_features(output, indx, cities_next):
     global scales
-    # print("cities_next: ", cities_next)
     for i in range(cities_next):
         for idx in range(len(indx) - 4):
             if indx[idx] != 100:
@@ -1020,11 +916,6 @@ def train_LSTM(
     y_train_tensors = Variable(torch.Tensor(y_train)).to(device)
     y_test_tensors = Variable(torch.Tensor(y_test)).to(device)
 
-    # print("X_train_tensors", X_train_tensors.shape)
-    # print("y_train_tensors", y_train_tensors.shape)
-    # print("X_test_tensors", X_test_tensors.shape)
-    # print("y_test_tensors", y_test_tensors.shape)
-
     X_train_tensors = scale_features(X_train_tensors, indx, cities_next)
     y_train_tensors = scale_label(y_train_tensors, indx)
     X_test_tensors = scale_features(X_test_tensors, indx, cities_next)
@@ -1044,12 +935,8 @@ def train_LSTM(
     loss_list4 = []
     acc_list5 = []
     loss_list5 = []
-    labels = Variable(torch.Tensor(np.array(y_train.tolist())).to(device)).to(
-        device
-    )  # .flatten()
-    val_labels = Variable(torch.Tensor(np.array(y_test.tolist())).to(device)).to(
-        device
-    )  # .flatten()
+    labels = Variable(torch.Tensor(np.array(y_train.tolist())).to(device)).to(device)
+    val_labels = Variable(torch.Tensor(np.array(y_test.tolist())).to(device)).to(device)
     val_loss_list = []
     val_loss_list1 = []
     val_acc_list1 = []
@@ -1181,11 +1068,6 @@ def train_LSTM(
             inds_o_g_direction,
             inds_s_g_direction,
         )
-        # print(
-        #     inds_o_direction,
-        #     "\n",
-        #     inds_s_direction,
-        # )
         metrics[4].update(
             inds_o_icon,
             inds_s_icon,
@@ -1349,7 +1231,6 @@ def train_LSTM(
                     X_test_tensors[batches * batchsize :], device, hiddens=False
                 )
                 scaled_batch = y_test_tensors[batches * batchsize :]
-                # test_label = val_labels[batches * batchsize :]
             else:
                 model.set_hiddens(batchsize, device)
                 output = model.forward(
@@ -1360,10 +1241,8 @@ def train_LSTM(
                 scaled_batch = y_test_tensors[
                     batches * batchsize : (batches + 1) * batchsize
                 ]
-                # test_label = val_labels[batches * batchsize : (batches + 1) * batchsize]
 
             val_torch_outputs = output.detach().clone()
-            # del output, input
 
             # loss
             val_loss1 = MSEloss_fn(
@@ -1442,11 +1321,6 @@ def train_LSTM(
             (inds_o_condition == inds_s_condition).sum().item() / size * 100
         )
 
-        # print(
-        #     inds_o_direction,
-        #     "\n",
-        #     inds_s_direction,
-        # )
         metrics[1].update(
             inds_o_direction,
             inds_s_direction,
@@ -1698,15 +1572,12 @@ def prediction(model, train, label, device, features=[], indx=[], cities_next=4)
     scaled_batch = 0
     with torch.no_grad():
         model.set_hiddens(1, device)
-        # print("runs")
         output = model.forward(X_test_tensors, device, hiddens=False)
 
         if len(label) > 0:
             scaled_batch = y_test_tensors
-        # test_label = val_labels[batches * batchsize :]
 
         val_torch_outputs = output.detach().clone()
-        # del output, input
 
     size = val_torch_outputs.shape[0]
 
@@ -1737,24 +1608,6 @@ def prediction(model, train, label, device, features=[], indx=[], cities_next=4)
         val_acc_list5.append(
             (inds_o_condition == inds_s_condition).sum().item() / size * 100
         )
-
-        # if compare <= 0:
-        #     return 100
-        # else:
-        #     val_acc_list1.append(100 / (1 + (compare / size * 3)))
-        # inds_o_direction = torch.argmax(val_torch_outputs[:, 3:12], dim=1)
-        # inds_s_direction = torch.argmax(scaled_batch[:, 3:12], dim=1)
-        # inds_o_icon = torch.argmax(val_torch_outputs[:, 12:33], dim=1)
-        # inds_s_icon = torch.argmax(scaled_batch[:, 12:33], dim=1)
-        # inds_o_condition = torch.argmax(val_torch_outputs[:, 33:54], dim=1)
-        # inds_s_condition = torch.argmax(scaled_batch[:, 33:54], dim=1)
-        # val_acc_list2.append(
-        #     (inds_o_direction == inds_s_direction).sum().item() / size * 100
-        # )
-        # val_acc_list3.append((inds_o_icon == inds_s_icon).sum().item() / size * 100)
-        # val_acc_list4.append(
-        #     (inds_o_condition == inds_s_condition).sum().item() / size * 100
-        # )
 
         val_acc_list = []
         if val1:
@@ -1795,12 +1648,10 @@ def last_occurrence(lst, val):
 
 def future_prediction(model_name, device, id=[], checks=[], hours=1, show_all=True):
     model, optimizer, history, others = load_own_Model(model_name, device)
-    # features, indx, m, h, p = gld.create_feature(*checks)
     ids, train, label = gld.get_predictDataHourly(
         dt.now(),
         id=id,
         seq=others["sequences"],
-        # max_batch=math.ceil(others["sequences"] / 24) * 24,
         feature_labels=others["features"],
         next_city_amount=others["city_next"],
         month=others["month"],
@@ -1808,22 +1659,7 @@ def future_prediction(model_name, device, id=[], checks=[], hours=1, show_all=Tr
         position=others["position"],
         forecast=hours,
     )
-    # {
-    #     "input_count": input_count,
-    #     "output_count": output_count,
-    #     "learning_rate": learning_rate,
-    #     "layer": layer,
-    #     "hiddensize": hiddensize,
-    #     "sequences": sequences,
-    #     "dropout": dropout,
-    #     "batchsize": batchsize,
-    #     "month": month,
-    #     "hours": hours,
-    #     "position": position,
-    # }
-    # print("ids: ", ids)
     uids = list(set(ids))
-    # print(train.shape, label.shape)
     if type(model) == "str":
         print("choose an other name")
         return []
@@ -1831,12 +1667,10 @@ def future_prediction(model_name, device, id=[], checks=[], hours=1, show_all=Tr
     id_list = []
     time_list = []
     vals = []
-    # print(len(ids), train.shape)
     for ui in uids:
         t = train[last_occurrence(ids, ui), :, -5][-1] + 1
         if t >= 24:
             t -= 24
-        # print(train[last_occurrence(ids, ui), :, -5])
         output = prediction(
             model,
             train[last_occurrence(ids, ui)],
@@ -1856,9 +1690,6 @@ def future_prediction(model_name, device, id=[], checks=[], hours=1, show_all=Tr
             ]
         )
         output_list = torch.cat([output_list, output.detach().clone()], dim=0)
-    # print(output_list.shape)
-    # print(id_list)
-    # print(time_list)
     outputs, ids, times = gld.continue_prediction(
         model,
         output_list[1:],
@@ -1893,7 +1724,6 @@ def check_prediction(model_name, device, id=[], hours=1):
         dt.now(),
         id=id,
     )
-    # print(len(ids))
     uids = list(set(ids))
     print("trainLabel: ", train.shape, label.shape)
     model, optimizer, history, others = load_own_Model(model_name, device)
@@ -1911,8 +1741,6 @@ def check_prediction(model_name, device, id=[], hours=1):
         output[55] = t
         output_list = torch.cat(output, dim=1)
 
-    # output_list = pd.concat([output_list, output])
-    # print(output_list)
     return output_list
 
 
@@ -1922,40 +1750,7 @@ def forecast_weather(model_name, h, ids, show_all, name="", checks=[], features=
     elif str(show_all) == "true":
         show_all = True
     device = check_cuda()
-    # print("model_name: ", str(model_name))
     outs = future_prediction(
         str(model_name), device, id=ids, hours=int(h), show_all=show_all, checks=checks
     )
     show_image(outs, hours=int(h), name=name, checks=checks, features=features)
-
-
-# if __name__ == "__main__":
-#     device = check_cuda()
-#     h = 2
-#     outs = future_prediction(
-#         "working",
-#         device,
-#         id=[
-#             "00020",
-#             "00044",
-#             # "00103",
-#             # "00183",
-#             # "00644",
-#             # "00896",
-#             # "01046",
-#             # "14157",
-#             # "15013",
-#             # "15000",
-#             # "15120",
-#             # "07489",
-#             # "13669",
-#             # "13714",
-#             # "13952",
-#         ],  # , "00096", "00294", "00757"]
-#         hours=h,
-#         show_all=False,
-#     )
-#     # print(outs.keys())
-#     print(outs.shape)
-#     # outs = gld.load_stations_csv()
-#     im = show_image(outs, hours=h)

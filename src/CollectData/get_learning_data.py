@@ -132,14 +132,11 @@ async def filter_dataHourly(data, feature_labels):
         data["condition" + str(j)] = [
             1 if icons.index(data["condition"][i]) == j else 0 for i in range(len(data))
         ]
-    # print("wind_direction: ", data["wind_direction"].to_list())
     data["wind_direction"] -= 22
-    # print("wind_direction changed: ", data["wind_direction"].to_list())
     data["wind_direction"] = [
         390 if math.isnan(data["wind_direction"][i]) else data["wind_direction"][i]
         for i in range(len(data))
     ]
-    # print("wind_direction new val: ", data["wind_direction"].to_list())
     data["wind_direction"] = [
         math.floor(data["wind_direction"][i] / 45)
         if data["wind_direction"][i] >= 0
@@ -225,7 +222,6 @@ async def get_DataHourlyAsync(
         next_city_amount,
         date.date(),
         feature_labels,
-        # ignore_len=ignore_len,
     )
     if "error" in train_Data or len(train_Data) < 25:
         hourly_bar.next()
@@ -243,7 +239,6 @@ async def get_DataHourlyAsync(
     if len(train_Data) > 24:
         train_Data = train_Data[:24]
     hourly_bar.next()
-    # print("get_DataHourlyAsync: ", train_Data.to_numpy().shape, row.ID, newCities)
     return (train_Data.to_numpy(), row.ID, newCities)
 
 
@@ -266,7 +261,6 @@ async def DataHourlyAsync(
     label=True,
 ):
     global continous_data
-    # print("unchanged continous_data: ", len(continous_data.keys()))
     global hourly_bar
     hourly_bar = Bar("Processing", max=len(cityloop))
     lists = []
@@ -298,21 +292,15 @@ async def DataHourlyAsync(
                     month=month,
                     hours=hours,
                     position=position,
-                    # ignore_len=ignore_len,
                 )
                 for row in cityloop.itertuples(index=False)
             ]
         )
 
-    # print(continous_hour_range, label_hour_range)
-    # id_list = cityloop.ID.to_list()
     id_list = []
-    # print("idList", id_list)
     for l in tqdm(lists, total=len(lists)):
-        # print("l[0]: ", l[0].shape)
         if len(l) > 0:
-            if len(l[0]) > 0:  # and len(l[2]):
-                # print(str(l[1]) in continous_data)
+            if len(l[0]) > 0:
                 if not str(l[1]) in continous_data:
                     continous_data[str(l[1])] = np.array(l[0])
                 else:
@@ -330,31 +318,17 @@ async def DataHourlyAsync(
     train_list = []
     label_list = []
 
-    # print("continous_data: ", len(continous_data.keys()))
-
-    # print(
-    #     "continous_hour_range: ",
-    #     continous_hour_range,
-    #     "label_hour_range: ",
-    #     label_hour_range,
-    # )
     tb = True
     # Iterate through the keys of the continuous data dictionary
     for k in tqdm(continous_data.keys(), total=len(continous_data.keys())):
         if continous_data[k].shape[0] >= continous_hour_range:
             ids.append(k)
-            # extra = 1
-            # if label:
-            #     extra = -1
 
             if tb:
-                # print("j loop:", continous_data[k].shape[0] - label_hour_range - 1)
-                # print("continous_data[k]:", continous_data[k].shape[0])
                 tb = False
             if label:
                 for j in range(continous_data[k].shape[0] - label_hour_range - 1):
                     train_list.append(continous_data[k][j : j + label_hour_range])
-                    # print(continous_data[k].shape, j + label_hour_range)
                     label_list.append(
                         continous_data[k][j + label_hour_range][
                             [i for i in range(len(feature_labels))]
@@ -366,8 +340,6 @@ async def DataHourlyAsync(
     # Convert lists to numpy arrays in a single step
     train_np = np.array(train_list)
     label_np = np.array(label_list)
-    # print("trs_List: ", len(train_list), len(label_list))
-    # print("trs: ", train_np.shape, label_np.shape)
     return id_list, train_np, label_np, ids
 
 
@@ -466,7 +438,6 @@ def gen_trainDataHourly_Async(
                         label=True,
                     )
                 )
-                # x,y,z = asyncio.run(DataHourlyAsync(cityP[s*i:], cityP, date, r_mode=True, minTime=minTime, duration=duration.days))
             else:
                 _, x, y, _ = asyncio.run(
                     DataHourlyAsync(
@@ -483,13 +454,6 @@ def gen_trainDataHourly_Async(
                         label=True,
                     )
                 )
-                # x,y,z = asyncio.run(DataHourlyAsync(cityP[s*i:s*(i+1)], cityP, date, r_mode=True, minTime=minTime, duration=duration.days))
-            # print(x.shape)
-            # print(y.shape)
-            # print(z.shape)
-            # if x == "error":
-            #     print("was error so code continued")
-            #     continue
             yield x, y, (d + skip_days), (i + 1)
 
 
@@ -561,9 +525,6 @@ def get_predictDataHourly(
             )
             x2 = x
             x = list(set(x + x3))
-            # print("x2: ", x2)
-            # print("y: ", y.shape)
-            # print("z: ", z.shape)
         return x1, y, z
 
 
@@ -609,8 +570,6 @@ def continue_prediction(
 
             close = asyncio.run(getCities(load_stations_by_IDs(id_list), id))
             close_list = close["ID"].to_list()
-            # print(id, len(close_list))
-            # print("vals:", len(vals), ", ", len(id_list), ", ", len(extended_id_list))
             if len(close_list) >= next_city_amount:
                 other_seq = output_list[
                     (hr - 1) * len(id_list) + id_list.index(close_list[0])
@@ -625,7 +584,6 @@ def continue_prediction(
                         ],
                         dim=0,
                     )
-                    # print("nca: ", nca, other_seq.shape)
                 new_seq = torch.cat(
                     [
                         output_list[(hr - 1) * len(id_list) + i],
@@ -642,8 +600,6 @@ def continue_prediction(
                     [continous_data[id], np.array([new_seq.tolist()])], axis=0
                 )
                 continous_data[id] = continous_data[id][1:]
-                # print(new_seq.shape)
-                # print(new_seq[-5], new_seq[-4], new_seq[-3], new_seq[-2], new_seq[-1])
                 output = prediction(
                     model, continous_data[id], [], device, cities_next=next_city_amount
                 )
@@ -673,7 +629,6 @@ async def get_logic(i, rand_dates):
         if data[0] != "error":
             return data
     return ["error", "error"]
-    # status_bar.next()
 
 
 async def getSourceByStationIDDate(rd):
@@ -710,28 +665,6 @@ def create_feature(
     hours,
     pos,
 ):
-    # print(
-    #     precipitation,
-    #     precipitation_probability,
-    #     precipitation_probability_6h,
-    #     pressure_msl,
-    #     temperature,
-    #     sunshine,
-    #     wind_direction,
-    #     wind_speed,
-    #     cloud_cover,
-    #     dew_point,
-    #     wind_gust_direction,
-    #     wind_gust_speed,
-    #     condition,
-    #     relative_humidity,
-    #     visibility,
-    #     solar,
-    #     icon,
-    #     months,
-    #     hours,
-    #     pos,
-    # )
     features = []
     indx = [
         100,

@@ -6,7 +6,6 @@ from CollectData import get_learning_data as gld
 import weather_lstm_pytorch as wlp
 
 
-# chosen = []
 chosenID = []
 
 dd_stations = Dropdown(
@@ -30,11 +29,6 @@ dd_models = Dropdown(
 def main(page: Page):
     page.scroll = ScrollMode.ALWAYS
 
-    # def page_rezized(e):
-    #     main_col.height = str(page.window.height - 100)
-    #     page.update()
-
-    # page.on_resize = page_rezized
     def resize_tab(e):
         if int(tabs.selected_index) == 0:
             main_col.height = 1000
@@ -233,9 +227,6 @@ def main(page: Page):
                     else:
                         if not switch_train.value:
                             return
-                # except ValueError:
-                #     print(ValueError)
-                #     error_text.visible = True
             else:
                 error_text2.value = "Error: Somewhere is an invalid value"
 
@@ -244,13 +235,11 @@ def main(page: Page):
     def add_clicked(e):
         if dd_stations.value[:5] not in chosenID:
             chosenID.append(dd_stations.value[:5])
-            # chosen.append(dd.value)
             lv.controls.append(Text(dd_stations.value, size=14))
             page.update()
 
     def sub_clicked(e):
         chosenID.pop()
-        # chosen.pop()
         lv.controls.pop()
         page.update()
 
@@ -345,7 +334,6 @@ def main(page: Page):
     skip_train = TextField(label="Type the amount of days you want to skip")
     forecast_images = Row(expand=False, wrap=False, scroll=ScrollMode.ALWAYS)
     train_images = Row(expand=False, wrap=False, scroll=ScrollMode.ALWAYS)
-    # chosens = Column([Text(ch, size=14) for ch in chosen])
 
     checks = Column(
         [
@@ -439,7 +427,6 @@ def main(page: Page):
             dropout_slider,
             create_model_button,
             error_text3,
-            # Text("Set the outputs", size=20),
         ],
     )
 

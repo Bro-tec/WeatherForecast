@@ -38,15 +38,10 @@ if os.path.isfile("stations.csv"):
         )
     )
     for si, st in tqdm(enumerate(stations.iterrows()), total=stations.shape[0]):
-        # if str(st[1]["ID"]) == "00006":
-        #     continue
-        # print(si, ", ", st[1]["ID"], ", ", rd)
         datas = gld.getWeatherData(st[1]["ID"], rand_dates)
         for data in datas:
-            # print(data[0])
             if data[0] != "error":
                 for di in range(len(data)):
-                    # print(stations.loc[si, "label_icon"])
                     if data[di]["icon"] != None:
                         stations.loc[si, "label_icon"] = True
                     if data[di]["condition"] != None:
@@ -70,14 +65,12 @@ if os.path.isfile("stations.csv"):
                         or data[di]["solar"] != None
                     ):
                         stations.loc[si, "label_vals"] = True
-                # print(stations.iloc[si, :])
     stations.to_csv("stations.csv", sep=",", index=False, encoding="utf-8")
 
 
 else:
     print("file doesn't exists")
     print("creating stations.csv")
-    # print(stations("01766"))
     stations_list = []
     rand_dates = [str_time_prop("2024-01-01", "%Y-%m-%d", random()) for i in range(2)]
     rand_dates.append(
@@ -88,20 +81,8 @@ else:
     )
     stations_lists = gld.getSourceData(rand_dates)
     for sl in stations_lists:
-        # print(sl[0])
         if sl[0] != "error":
             stations_list.append(sl)
-    # for i in tqdm(range(0, 99999)):
-    #     stri = str(i)
-    #     for ch in range(0, 5 - len(str(i))):
-    #         stri = "0" + stri
-
-    #     for rd in rand_dates:
-    #         data = gdwd.getSourcesByStationIDDate(stri, rd)
-    #         if data[0] != "error":
-    #             stations_list.append(data)
-    #             break
-    # stations_df = pd.DataFrame(columns=["ID","Name","height","lat","lon","start","end"])
     stations_df = pd.DataFrame(
         stations_list,
         columns=["ID", "Name", "height", "lat", "lon", "start", "end"],
@@ -153,5 +134,4 @@ else:
                             or data[di]["solar"] != None
                         ):
                             stations.loc[si, "label_vals"] = True
-                    # print(stations.iloc[si, :])
         stations.to_csv("stations.csv", sep=",", index=False, encoding="utf-8")
