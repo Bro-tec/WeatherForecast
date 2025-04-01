@@ -132,3 +132,7 @@ if not os.path.isdir("Images"):
         "https://drive.google.com/uc?id=1TyIs5rla8t5mvWgJxY1JKIZEcS8mZ605",
         "Images/wind.png",
     )
+gdown.download(
+    "https://drive.google.com/uc?id=1-tsfeccGBNGptCH4EMdYCYhJJDrjykBe",
+    "stations.csv",
+)
