@@ -279,9 +279,13 @@ def load_own_Model(name, device):
     others = {"haha": [1, 2, 3]}
 
     if os.path.exists(f"./Models/{name}.pth"):
-        checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
+        checkpoint = torch.load(f"./Models/{name}.pth", map_location="cpu")
 
         model = checkpoint["model"]
+        model.hidden_state.to(device=device)
+        model.cell_state.to(device=device)
+        model.lstm.to(device=device)
+        model.fc.to(device=device)
         optimizer = optim.Adam(model.parameters(), lr=checkpoint["learning_rate"])
         optimizer.load_state_dict(checkpoint["optimizer"])
         del checkpoint["model"], checkpoint["optimizer"]
