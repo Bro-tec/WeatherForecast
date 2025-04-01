@@ -86,3 +86,9 @@ try:
 except ImportError:
     print("installing gdown")
     os.system("pip install gdown")
+
+try:
+    import flet
+except ImportError:
+    print("installing flet")
+    os.system("pip install flet")
