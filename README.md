@@ -22,7 +22,7 @@ Run ```main.bat```  <br>
 or <br>
 if you run the code for the first time load the needed data therefore run ```load_needed.py``` <br>
 if thats done we can continue <br>
-type ```flet run``` in the WeatherForecast folder in your chosen command prompt.
+type ```flet run``` in the WeatherForecast folder in your chosen command prompt. <br>
 If ```flet run``` is not working run src/main.py manually to start the app.
 <br>
 <br>
