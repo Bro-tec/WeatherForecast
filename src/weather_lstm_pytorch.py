@@ -46,6 +46,10 @@ def check_cuda():
     return torch.device(device)
 
 
+def clear_cuda():
+    torch.cuda.empty_cache()
+
+
 # creating my lstm
 class PyTorch_LSTM(nn.Module):
     def __init__(
@@ -216,7 +220,6 @@ def create_history(features=[]):
     if len(features) > 0:
         if (
             "precipitation" in features
-            or "precipitation" in features
             or "precipitation_probability" in features
             or "precipitation_probability_6h" in features
             or "pressure_msl" in features
@@ -229,10 +232,6 @@ def create_history(features=[]):
             or "relative_humidity" in features
             or "visibility" in features
             or "solar" in features
-            or "precipitation" in features
-            or "precipitation" in features
-            or "precipitation" in features
-            or "precipitation" in features
         ):
             i += 1
             history[f"accuracy{i}"] = [0]
@@ -308,7 +307,7 @@ def load_own_Model(name, device):
 def save_own_Model(name, history, model, optimizer, device):
     with open(f"./Models/{name}_history.json", "w") as fp:
         json.dump(history, fp)
-    checkpoint = torch.load(f"./Models/{name}.pth", map_location=device)
+    checkpoint = torch.load(f"./Models/{name}.pth", map_location="cpu")
     checkpoint.update({"model": model, "optimizer": optimizer.state_dict()})
     torch.save(
         checkpoint,
@@ -316,6 +315,7 @@ def save_own_Model(name, history, model, optimizer, device):
     )
 
     print("Saved model")
+    del checkpoint
 
 
 def cropping(image, x_list, y_list):
@@ -327,14 +327,120 @@ def cropping(image, x_list, y_list):
 
 
 def points(image, drw, df, ims, ofs, checks=[], features=[]):
+    pos = []
     for i, d in df.iterrows():
-        drw.ellipse(
-            xy=(d.lon - 3, d.lat - 3, d.lon + 3, d.lat + 3),
-            fill="red",
-        )
         if i == 0:
-            font = ImageFont.truetype("arial.ttf", 20)
-            drw.text((550, 15), str(d.Time) + " Uhr", (0, 0, 0), font=font)
+            if "Time" in d.keys():
+                font = ImageFont.truetype("arial.ttf", 20)
+                drw.text((550, 15), str(d.Time) + " Uhr", (0, 0, 0), font=font)
+            if not (checks[15] or checks[15] == "true") and "icon" in d.keys():
+                pos.append([-20,-20])
+            if not (checks[16] or checks[16] == "true") and "condition" in d.keys():
+                pos.append([0,-20])
+            if not (checks[13] or checks[13] == "true") and "g_direction" in d.keys():
+                pos.append([10,10])
+            if not (checks[14] or checks[14] == "true") and "direction" in d.keys():
+                pos.append([-10,10])
+            pos = pos + [[-20,10],[20,10],[-30,10],[30,10],[-10,20],[-30, -30],[-20, -30],[-10, -30],[0, -30],[10, -30],[20, -30],[30, -30], [-30, -20], [-30, -10], [30, -20], [30, -10], [-30, 0], [30, 0]]
+            
+        xy=0
+        if checks[19] or checks[19] == "true":
+            drw.ellipse(
+                xy=(d.lon - 3, d.lat - 3, d.lon + 3, d.lat + 3),
+                fill="red",
+            )
+        # [
+        #         c_precipitation.value,
+        #         c_precipitation_probability.value,
+        #         c_precipitation_probability_6h.value,
+        #         c_pressure_msl.value,
+        #         c_temperature.value,
+        #         c_sunshine.value,
+        #         c_wind_speed.value,
+        #         c_cloud_cover.value,
+        #         c_dew_point.value,
+        #         c_wind_gust_speed.value,
+        #         c_relative_humidity.value,
+        #         c_visibility.value,
+        #         c_solar.value,
+        #         c_wind_direction.value,
+        #         c_wind_gust_direction.value,
+        #         c_icon.value,
+        #         c_condition.value,
+        #         c_months.value,
+        #         c_hours.value,
+        #         c_pos.value,
+        #     ]
+        # if (checks[0] or checks[0] == "true") and "precipitation" in d.keys():
+        
+        
+        font1 = ImageFont.truetype("arial.ttf", 10)
+        
+        if "precipitation" in d.keys():
+            if d.precipitation == None:
+                d.precipitation = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.precipitation, 1)) +" %", (0, 255, 0), font=font1)
+            xy +=1
+        if "precipitation_probability" in d.keys():
+            if d.precipitation_probability == None:
+                d.precipitation_probability = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.precipitation_probability, 1)) +" %", (0, 255, 255), font=font1)
+            xy +=1
+        if "precipitation_probability_6h" in d.keys():
+            if d.precipitation_probability_6h == None:
+                d.precipitation_probability_6h = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.precipitation_probability_6h, 1)) +" %", (255, 192, 203), font=font1)
+            xy +=1
+        if "pressure_msl" in d.keys():
+            if d.pressure_msl == None:
+                d.pressure_msl = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.pressure_msl, 1)) +" %", (0, 0, 255), font=font1)
+            xy +=1
+        if "temperature" in d.keys():
+            if d.temperature == None:
+                d.temperature = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.temperature, 1)) +" %", (255, 165, 0), font=font1)
+            xy +=1
+        if "sunshine" in d.keys():
+            if d.sunshine == None:
+                d.sunshine = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.sunshine, 1)) +" %", (255, 255, 0), font=font1)
+            xy +=1
+        if "wind_speed" in d.keys():
+            if d.wind_speed == None:
+                d.wind_speed = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.wind_speed, 1)) +" km/h", (64, 224, 208), font=font1)
+            xy +=1
+        if "cloud_cover" in d.keys():
+            if d.cloud_cover == None:
+                d.cloud_cover = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.cloud_cover, 1)) +" %", (173, 216, 230), font=font1)
+            xy +=1
+        if "dew_point" in d.keys():
+            if d.dew_point == None:
+                d.dew_point = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.dew_point, 1)) +" %",  (165, 42, 42), font=font1)
+            xy +=1
+        if "wind_gust_speed" in d.keys():
+            if d.wind_gust_speed == None:
+                d.wind_gust_speed = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.wind_gust_speed, 1)) +" km/h", (255, 127, 80), font=font1)
+            xy +=1
+        if "relative_humidity" in d.keys():
+            if d.relative_humidity == None:
+                d.relative_humidity = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.relative_humidity, 1)) +" %", (250, 128, 114), font=font1)
+            xy +=1
+        if "visibility" in d.keys():
+            if d.visibility == None:
+                d.visibility = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.visibility, 1)) +" %", (128, 128, 0), font=font1)
+            xy +=1
+        if "solar" in d.keys():
+            if d.solar == None:
+                d.solar = "-"
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.solar, 1)) +" %", (0, 100, 0), font=font1)
+            xy +=1
         if "icon" in d.keys():
             if d.icon == None:
                 d.icon = "None"
@@ -349,7 +455,7 @@ def points(image, drw, df, ims, ofs, checks=[], features=[]):
             if d.g_direction == None:
                 d.g_direction = "None"
             ix = ofs.index(d.g_direction)
-            image.paste(ims[ix], (int(d.lon) - 10, int(d.lat) + 10), mask=ims[ix])
+            image.paste(ims[ix], (int(d.lon) + 10, int(d.lat) + 10), mask=ims[ix])
         if "direction" in d.keys():
             if d.direction == None:
                 d.direction = "None"
@@ -403,6 +509,31 @@ def show_image(
 
         im = points(im, drw, outs_stations, ims, ofs, checks=checks, features=features)
         im.save(f"Forecasts/{name}_{h}{name_ending}", "PNG")
+        
+def mock_show_image(
+    cities, name="germany_points", name_ending=".png", checks=[], features=[], i=0
+):
+    if len(checks) ==0:
+        checks = [False for i in range(20)]
+        checks[19] = True
+    im = Image.open("Images/Landkarte_Deutschland.png").convert("RGBA")
+    stations = gld.load_stations_csv()
+    outs_stations = gld.load_stations_by_IDs(cities)
+    stations["lat"] = [-x for x in stations["lat"].to_list()]
+    stations["lon"] = l_to_px(stations["lon"].to_list(), 648, 50)
+    stations["lat"] = l_to_px(stations["lat"].to_list(), 904, 60)
+    outs_stations = pd.merge(
+        outs_stations,
+        stations,
+        on=["ID"],
+        suffixes=("_x", ""),
+    )
+    ims, ofs = load_images()
+    drw = ImageDraw.Draw(im)
+
+    im = points(im, drw, outs_stations, ims, ofs, checks=checks, features=features)
+    im.save(f"Forecasts/mock_{name}{i}{name_ending}", "PNG")
+
 
 
 def approximation(all):
@@ -744,6 +875,8 @@ def plotting_hist(history, metrics, name, min_amount=2, epoche=0):
     fig.set_figheight(30)
     plt.savefig(f"./Plots/{name_tag}_matrix.png")
     plt.close()
+    
+    del metrics
 
 
 def loss_indexer(indx, lnf):
@@ -928,6 +1061,7 @@ def train_LSTM(
         MulticlassConfusionMatrix(num_classes=9).to(device) for i in range(4)
     ] + [MulticlassConfusionMatrix(num_classes=21).to(device) for i in range(4)]
 
+    
     loss_list = []
     acc_list1 = []
     loss_list1 = []
@@ -1116,7 +1250,7 @@ def train_LSTM(
     my_loss4 = clean_torch(my_loss4).mean()
     my_loss5 = torch.FloatTensor(loss_list5).to(device)
     my_loss5 = clean_torch(my_loss5).mean()
-
+        
     # showing training
     history_loss_i = 0
     if str(my_loss).lower() != "nan":
@@ -1377,7 +1511,7 @@ def train_LSTM(
     my_val_loss4 = clean_torch(my_val_loss4).mean()
     my_val_loss5 = torch.FloatTensor(val_loss_list5).to(device)
     my_val_loss5 = clean_torch(my_val_loss5).mean()
-
+    
     history_loss_i = 0
     if str(my_val_loss).lower() != "nan":
         history["val_loss"].append(float(my_val_loss))
@@ -1489,18 +1623,9 @@ def train_LSTM(
             my_val_acc,
         )
     )
-
-    del (
-        MSEloss_fn,
-        CE1loss_fn,
-        CE2loss_fn,
-        CE3loss_fn,
-        CE4loss_fn,
-        X_train_tensors,
-        y_train_tensors,
-        X_test_tensors,
-        y_test_tensors,
-    )
+    del (X_train_tensors, X_test_tensors, y_train_tensors, y_test_tensors, CE4loss_fn,CE3loss_fn,CE2loss_fn,CE1loss_fn,MSEloss_fn, labels, val_labels,my_acc,my_loss,my_acc1,my_loss1,my_acc2,my_loss2,my_acc3,my_loss3,my_acc4,my_loss4,my_acc5,my_loss5,my_val_acc,my_val_loss,my_val_loss1,my_val_acc1,my_val_loss2,my_val_acc2,my_val_loss3,my_val_acc3,my_val_loss4,my_val_acc4,my_val_loss5,my_val_acc5,output, scaled_batch,
+        inds_o_direction,inds_s_direction,inds_o_g_direction,inds_s_g_direction,inds_o_icon,inds_s_icon,inds_o_condition,inds_s_condition)
+    
 
     return model, history, metrics, optimizer
 
@@ -1667,7 +1792,7 @@ def future_prediction(model_name, device, id=[], checks=[], hours=1, show_all=Tr
     if type(model) == "str":
         print("choose an other name")
         return []
-    output_list = torch.zeros(1, 54).to(device)
+    output_list = torch.zeros(1, others["output_count"]).to(device)
     id_list = []
     time_list = []
     vals = []

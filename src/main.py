@@ -25,10 +25,11 @@ dd_models = Dropdown(
     ],
 )
 
+i_counter = 0
+
 
 def main(page: Page):
     page.scroll = ScrollMode.ALWAYS
-
     def resize_tab(e):
         if int(tabs.selected_index) == 0:
             main_col.height = 1000
@@ -175,7 +176,7 @@ def main(page: Page):
                 for train, label, i, r in gld.gen_trainDataHourly_Async(
                     skip_days=int(skip_train.value),
                     seq=others["sequences"],
-                    max_batch=(math.floor(others["sequences"] / 24) + 1) * 24,
+                    max_batch=(math.ceil(others["sequences"] / 24) + 1) * 24,
                     redos=int(redo_slider.value),
                     next_city_amount=others["city_next"],
                     feature_labels=list(others["features"]),
@@ -185,6 +186,7 @@ def main(page: Page):
                 ):
                     if train.shape[0] > 0:
                         for epoch in range(int(epoch_slider.value)):
+                            print("Epoche: ", epoch)
                             model, history, metrics, optimizer = wlp.train_LSTM(
                                 str(dd_models.value),
                                 train,
@@ -195,6 +197,7 @@ def main(page: Page):
                                 history,
                                 device,
                                 epoch_count=int(epoch_slider.value),
+                                epoch=epoch,
                                 batchsize=int(batch_slider.value),
                                 cities_next=int(others["city_next"]),
                             )
@@ -208,6 +211,8 @@ def main(page: Page):
                                 min_amount=int(epoch_slider.value),
                                 epoche=epoch,
                             )
+                            del metrics
+                            wlp.clear_cuda()
                             train_images.controls.clear()
                             plt = ["accuracy", "loss", "matrix"]
                             for i in range(3):
@@ -234,14 +239,46 @@ def main(page: Page):
 
     def add_clicked(e):
         if dd_stations.value[:5] not in chosenID:
+            global i_counter
             chosenID.append(dd_stations.value[:5])
             lv.controls.append(Text(dd_stations.value, size=14))
+            wlp.mock_show_image(chosenID, i=i_counter)
+            forecast_images.controls.clear()
+            if i_counter > 0:
+                os.remove(f"Forecasts/mock_germany_points{i_counter-1}.png")
+            forecast_images.controls.append(
+                Image(
+                    src=f"Forecasts/mock_germany_points{i_counter}.png",
+                    width=600,
+                    height=1000,
+                    fit=ImageFit.FILL,
+                    repeat=ImageRepeat.NO_REPEAT,
+                    border_radius=border_radius.all(10),
+                )
+            )
             page.update()
+            i_counter +=1
 
     def sub_clicked(e):
+        global i_counter
         chosenID.pop()
         lv.controls.pop()
+        wlp.mock_show_image(chosenID)
+        forecast_images.controls.clear()
+        if i_counter > 0:
+            os.remove(f"Forecasts/mock_germany_points{i_counter-1}.png")
+        forecast_images.controls.append(
+            Image(
+                src=f"Forecasts/mock_germany_points{i_counter}.png",
+                width=600,
+                height=1000,
+                fit=ImageFit.FILL,
+                repeat=ImageRepeat.NO_REPEAT,
+                border_radius=border_radius.all(10),
+            )
+        )
         page.update()
+        i_counter +=1
 
     def update_slider(e):
         learning_rate_text.value = (
@@ -271,7 +308,7 @@ def main(page: Page):
     )
     hours_slider = Slider(min=0, max=1000, divisions=1000, label="{value} hours")
     epoch_slider = Slider(min=0, max=100, divisions=100, label="{value} epochs")
-    batch_slider = Slider(min=0, max=10000, divisions=100, label="batchsize of {value}")
+    batch_slider = Slider(min=0, max=1000, divisions=100, label="batchsize of {value}")
     city_next_slider = Slider(min=0, max=100, divisions=100, label="{value} cities")
     redo_slider = Slider(
         min=0,
