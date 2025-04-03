@@ -263,7 +263,7 @@ def main(page: Page):
         global i_counter
         chosenID.pop()
         lv.controls.pop()
-        wlp.mock_show_image(chosenID)
+        wlp.mock_show_image(chosenID, i=i_counter)
         forecast_images.controls.clear()
         if i_counter > 0:
             os.remove(f"Forecasts/mock_germany_points{i_counter-1}.png")
