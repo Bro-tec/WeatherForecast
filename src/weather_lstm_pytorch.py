@@ -332,7 +332,7 @@ def points(image, drw, df, ims, ofs, checks=[], features=[]):
         if i == 0:
             if "Time" in d.keys():
                 font = ImageFont.truetype("arial.ttf", 20)
-                drw.text((550, 15), str(d.Time) + " Uhr", (0, 0, 0), font=font)
+                drw.text((600, 15), str(d.Time) + " Uhr", (0, 0, 0), font=font)
             if not (checks[15] or checks[15] == "true") and "icon" in d.keys():
                 pos.append([-20,-20])
             if not (checks[16] or checks[16] == "true") and "condition" in d.keys():
@@ -341,9 +341,10 @@ def points(image, drw, df, ims, ofs, checks=[], features=[]):
                 pos.append([10,10])
             if not (checks[14] or checks[14] == "true") and "direction" in d.keys():
                 pos.append([-10,10])
-            pos = pos + [[-20,10],[20,10],[-30,10],[30,10],[-10,20],[-30, -30],[-20, -30],[-10, -30],[0, -30],[10, -30],[20, -30],[30, -30], [-30, -20], [-30, -10], [30, -20], [30, -10], [-30, 0], [30, 0]]
+            pos = pos + [[-20,0],[20,10],[-30,10],[30,0],[-10,20],[-30, -30],[-20, -40],[-10, -50],[0, -30],[20, -40],[20, -50],[30, -30], [30, 20], [-30, -10], [30, -20], [30, -10], [-30, 0], [30, 0]]
             
         xy=0
+        xz=600
         if checks[19] or checks[19] == "true":
             drw.ellipse(
                 xy=(d.lon - 3, d.lat - 3, d.lon + 3, d.lat + 3),
@@ -380,87 +381,138 @@ def points(image, drw, df, ims, ofs, checks=[], features=[]):
             if d.precipitation == None:
                 d.precipitation = "-"
             drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.precipitation, 1)) +" %", (0, 255, 0), font=font1)
+            if i == 0:
+                drw.text((620, xz), "precipitation", (0, 255, 0), font=font1)
+                xz += 10
             xy +=1
         if "precipitation_probability" in d.keys():
             if d.precipitation_probability == None:
                 d.precipitation_probability = "-"
             drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.precipitation_probability, 1)) +" %", (0, 255, 255), font=font1)
+            if i == 0:
+                drw.text((620, xz), "precipitation probability", (0, 255, 255), font=font1)
+                xz += 10
             xy +=1
         if "precipitation_probability_6h" in d.keys():
             if d.precipitation_probability_6h == None:
                 d.precipitation_probability_6h = "-"
             drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.precipitation_probability_6h, 1)) +" %", (255, 192, 203), font=font1)
+            if i == 0:
+                drw.text((620, xz), "precipitation probability 6h", (255, 192, 203), font=font1)
+                xz += 10
             xy +=1
         if "pressure_msl" in d.keys():
             if d.pressure_msl == None:
                 d.pressure_msl = "-"
             drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.pressure_msl, 1)) +" %", (0, 0, 255), font=font1)
+            if i == 0:
+                drw.text((620, xz), "pressure msl", (0, 0, 255), font=font1)
+                xz += 10
             xy +=1
         if "temperature" in d.keys():
             if d.temperature == None:
                 d.temperature = "-"
-            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.temperature, 1)) +" %", (255, 165, 0), font=font1)
+            drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.temperature/10, 1)) +" C", (255, 165, 0), font=font1)
+            if i == 0:
+                drw.text((620, xz), "temperature", (255, 165, 0), font=font1)
+                xz += 10
             xy +=1
         if "sunshine" in d.keys():
             if d.sunshine == None:
                 d.sunshine = "-"
             drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.sunshine, 1)) +" %", (255, 255, 0), font=font1)
+            if i == 0:
+                drw.text((620, xz), "sunshine", (255, 255, 0), font=font1)
+                xz += 10
             xy +=1
         if "wind_speed" in d.keys():
             if d.wind_speed == None:
                 d.wind_speed = "-"
             drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.wind_speed, 1)) +" km/h", (64, 224, 208), font=font1)
+            if i == 0:
+                drw.text((620, xz), "wind speed", (64, 224, 208), font=font1)
+                xz += 10
             xy +=1
         if "cloud_cover" in d.keys():
             if d.cloud_cover == None:
                 d.cloud_cover = "-"
             drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.cloud_cover, 1)) +" %", (173, 216, 230), font=font1)
+            if i == 0:
+                drw.text((620, xz), "cloud cover", (173, 216, 230), font=font1)
+                xz += 10
             xy +=1
         if "dew_point" in d.keys():
             if d.dew_point == None:
                 d.dew_point = "-"
             drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.dew_point, 1)) +" %",  (165, 42, 42), font=font1)
+            if i == 0:
+                drw.text((620, xz), "dew point", (165, 42, 42), font=font1)
+                xz += 10
             xy +=1
         if "wind_gust_speed" in d.keys():
             if d.wind_gust_speed == None:
                 d.wind_gust_speed = "-"
             drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.wind_gust_speed, 1)) +" km/h", (255, 127, 80), font=font1)
+            if i == 0:
+                drw.text((620, xz), "wind gust speed", (255, 127, 80), font=font1)
+                xz += 10
             xy +=1
         if "relative_humidity" in d.keys():
             if d.relative_humidity == None:
                 d.relative_humidity = "-"
             drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.relative_humidity, 1)) +" %", (250, 128, 114), font=font1)
+            if i == 0:
+                drw.text((620, xz), "relative humidity", (250, 128, 114), font=font1)
+                xz += 10
             xy +=1
         if "visibility" in d.keys():
             if d.visibility == None:
                 d.visibility = "-"
             drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.visibility, 1)) +" %", (128, 128, 0), font=font1)
+            if i == 0:
+                drw.text((620, xz), "visibility", (128, 128, 0), font=font1)
+                xz += 10
             xy +=1
         if "solar" in d.keys():
             if d.solar == None:
                 d.solar = "-"
             drw.text((int(d.lon) + pos[xy][0], int(d.lat) + pos[xy][1]), str(round(d.solar, 1)) +" %", (0, 100, 0), font=font1)
+            if i == 0:
+                drw.text((620, xz), "solar", (0, 100, 0), font=font1)
+                xz += 10
             xy +=1
         if "icon" in d.keys():
             if d.icon == None:
                 d.icon = "None"
             ix = ofs.index(d.icon)
             image.paste(ims[ix], (int(d.lon) - 20, int(d.lat) - 20), mask=ims[ix])
+            if i == 0:
+                drw.text((620, xz), "links icon", (0, 0, 0), font=font1)
+                xz += 10
         if "condition" in d.keys():
             if d.condition == None:
                 d.condition = "None"
             ix = ofs.index(d.condition)
             image.paste(ims[ix], (int(d.lon), int(d.lat) - 20), mask=ims[ix])
+            if i == 0:
+                drw.text((620, xz), "rechts condition", (0, 0, 0), font=font1)
+                xz += 10
         if "g_direction" in d.keys():
             if d.g_direction == None:
                 d.g_direction = "None"
             ix = ofs.index(d.g_direction)
             image.paste(ims[ix], (int(d.lon) + 10, int(d.lat) + 10), mask=ims[ix])
+            if i == 0:
+                drw.text((620, xz), "links gust direction", (0, 0, 0), font=font1)
+                xz += 10
         if "direction" in d.keys():
             if d.direction == None:
                 d.direction = "None"
             ix = ofs.index(d.direction)
             image.paste(ims[ix], (int(d.lon) - 10, int(d.lat) + 10), mask=ims[ix])
+            if i == 0:
+                drw.text((620, xz), "rechts direction", (0, 0, 0), font=font1)
+                xz += 10
     return image
 
 

@@ -34,7 +34,7 @@ def main(page: Page):
         if int(tabs.selected_index) == 0:
             main_col.height = 1000
         elif int(tabs.selected_index) == 1:
-            main_col.height = 1200
+            main_col.height = 1500
         else:
             main_col.height = 2200
         main_col.width = page.width
@@ -220,7 +220,7 @@ def main(page: Page):
                                     Image(
                                         src=f"Plots/{str(dd_models.value)}_plot_{plt[i]}.png",
                                         width=500,
-                                        height=1000,
+                                        height=700,
                                         fit=ImageFit.FILL,
                                         repeat=ImageRepeat.NO_REPEAT,
                                         border_radius=border_radius.all(10),
