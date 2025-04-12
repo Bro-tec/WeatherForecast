@@ -30,6 +30,7 @@ i_counter = 0
 
 def main(page: Page):
     page.scroll = ScrollMode.ALWAYS
+
     def resize_tab(e):
         if int(tabs.selected_index) == 0:
             main_col.height = 1000
@@ -150,7 +151,9 @@ def main(page: Page):
             if str(err) == "error":
                 error_text3.value = "Error: Name alreaedy exists"
             else:
-                dd_models.options.append(dropdown.Option(str(model_name.value)))
+                error_text3.value = (
+                    "Model saved. Please Reload the app to load the new model."
+                )
             page.update()
         else:
             error_text3.value = "Error: Somewhere is an invalid value"
@@ -257,7 +260,7 @@ def main(page: Page):
                 )
             )
             page.update()
-            i_counter +=1
+            i_counter += 1
 
     def sub_clicked(e):
         global i_counter
@@ -278,7 +281,7 @@ def main(page: Page):
             )
         )
         page.update()
-        i_counter +=1
+        i_counter += 1
 
     def update_slider(e):
         learning_rate_text.value = (
