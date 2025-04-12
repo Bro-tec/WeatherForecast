@@ -136,3 +136,7 @@ gdown.download(
     "https://drive.google.com/uc?id=1-tsfeccGBNGptCH4EMdYCYhJJDrjykBe",
     "stations.csv",
 )
+gdown.download(
+    "https://drive.google.com/uc?id=1-tsfeccGBNGptCH4EMdYCYhJJDrjykBe",
+    "src/stations.csv",
+)
