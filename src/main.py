@@ -48,6 +48,7 @@ def main(page: Page):
         model, optimizer, history, others = wlp.load_own_Model(
             str(dd_models.value), device
         )
+        gld.reset_continous_data()
         wlp.forecast_weather(
             dd_models.value,
             hours_slider.value,
@@ -94,6 +95,7 @@ def main(page: Page):
         page.update()
 
     def create_model_clicked(e):
+        gld.reset_continous_data()
         if (
             len(str(model_name.value)) > 0
             and learning_rate_slider.value != 0

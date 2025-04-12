@@ -45,6 +45,11 @@ hourly_bar = Bar("Processing", max=20)
 status_bar = Bar("Processing", max=20)
 
 
+def reset_continous_data():
+    global continous_data
+    continous_data = {}
+
+
 # loading data from excel file
 def load_stations_csv():
     df = pd.read_csv(
